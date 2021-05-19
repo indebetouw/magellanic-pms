@@ -1,24 +1,25 @@
-# location of catalogs
-catdir="../../MCBox/HST/"
-almadir="../../MCBox/ALMA/"
-
 from astropy.table import Table
 import os, sys
 from astropy.io import fits
 from astropy.wcs import WCS
-
 from astropy import coordinates
 from astropy import units as u
 import scipy.ndimage
 import numpy as np
-
 import matplotlib.pyplot as pl
-pl.ion()
-
 if not os.path.abspath("../code") in sys.path:
     sys.path.append(os.path.abspath("../code"))
-
 from kNN_extinction_map import kNN_extinction_map
+pl.ion()
+
+#########
+# autoset paths for catalogs based on user
+if os.environ['USER'] =='toneill':
+    catdir = '/Users/toneill/Repos/Box/HST/'
+    almadir ='/Users/toneill/Repos/Box/ALMA/'
+else:
+    catdir="../../MCBox/HST/"
+    almadir="../../MCBox/ALMA/"
 
 # read Ksoll UMS list
 # "ID","m_f275w","e_f275w","q_f275w","f_f275w","m_f336w","e_f336w","q_f336w","f_f336w","m_f555w","e_f555w","q_f555w","f_f555w","m_f658n","e_f658n","q_f658n","f_f658n","m_f775w","e_f775w","q_f775w","f_f775w","m_f110w","e_f110w","q_f110w","f_f110w","m_f160w","e_f160w","q_f160w","f_f160w","x","y","x_new","y_new","Ra","Dec","A_v","delta_Av"

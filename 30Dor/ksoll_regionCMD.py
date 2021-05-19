@@ -1,16 +1,23 @@
 # show CMD of small region
 
-# location of catalog data:
-catalogdir="../../MCBox/HST/"
-
 from astropy.table import Table
-import os,pickle
+import os,pickle,sys
 import numpy as np
 import matplotlib.pyplot as pl
-pl.ion()
 if not os.path.abspath("../code") in sys.path:
     sys.path.append(os.path.abspath("../code"))
 from kNN_extinction_map import kNN_extinction
+pl.ion()
+
+#########
+# autoset catalog path based on user
+if os.environ['USER'] =='toneill':
+    catalogdir = '/Users/toneill/Repos/Box/HST/'
+# can expand for others if desired
+else:
+    catalogdir="../../MCBox/HST/"
+
+##########
 
 # region of interest
 
