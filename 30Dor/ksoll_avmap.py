@@ -1,3 +1,7 @@
+# location of catalogs
+catdir="../../MCBox/HST/"
+almadir="../../MCBox/ALMA/"
+
 from astropy.table import Table
 import os, sys
 from astropy.io import fits
@@ -19,7 +23,7 @@ from kNN_extinction_map import kNN_extinction_map
 # read Ksoll UMS list
 # "ID","m_f275w","e_f275w","q_f275w","f_f275w","m_f336w","e_f336w","q_f336w","f_f336w","m_f555w","e_f555w","q_f555w","f_f555w","m_f658n","e_f658n","q_f658n","f_f658n","m_f775w","e_f775w","q_f775w","f_f775w","m_f110w","e_f110w","q_f110w","f_f110w","m_f160w","e_f160w","q_f160w","f_f160w","x","y","x_new","y_new","Ra","Dec","A_v","delta_Av"
 
-ums=Table.read("Ksoll2018_HTTP_UMS_selection.csv",format="ascii")
+ums=Table.read(catdir+"Ksoll2018_HTTP_UMS_selection.csv",format="ascii")
 URA = ums['Ra'].data
 UDec = ums['Dec'].data
 UAV = ums['A_v'].data
@@ -57,9 +61,11 @@ else:
 
 
 coroot="30Dor_feather_mosaic83_12CO_7meter.mom0"
+#coroot="30Dor_feather_mosaic_12CO_12meter.mom0"
+#coroot="12CO_TP_29sept.integrated"
 
 
-cohdu=fits.open("ALMA/"+coroot+".fits")[0]
+cohdu=fits.open(almadir+coroot+".fits")[0]
 avhdu=fits.open(avroot+".fits")[0]
 hdr1=avhdu.header
 hdr2=cohdu.header
