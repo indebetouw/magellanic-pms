@@ -1,5 +1,8 @@
 # show CMD of small region
 
+# location of catalog data:
+catalogdir="../../MCBox/HST/"
+
 from astropy.table import Table
 import os,pickle
 import numpy as np
@@ -35,7 +38,7 @@ try:
 except:
     n=0
 if n<=0:
-    fullcatname="HTTP.2015_10_20.1.astro"
+    fullcatname=catalogdir+"HTTP.2015_10_20.1.astro"
     if os.path.exists(fullcatname+".pkl"):
         fullcat=pickle.load(open(fullcatname+".pkl",'rb'))
     else:
@@ -106,7 +109,7 @@ f.close()
 #----------------------------------------
 # now do the extinction correction
 
-ums=Table.read("Ksoll2018_HTTP_UMS_selection.csv",format="ascii")
+ums=Table.read(catalogdir+"Ksoll2018_HTTP_UMS_selection.csv",format="ascii")
 URA = ums['Ra'].data
 UDec = ums['Dec'].data
 UAV = ums['A_v'].data
@@ -211,7 +214,7 @@ for i in range(len(ucolor0_dered)):
 
 # what about the identified PMS stars in this region?
 
-pms=Table.read("Ksoll2018_HTTP_PMS_catalogue.csv",format="ascii")
+pms=Table.read(catalogdir+"Ksoll2018_HTTP_PMS_catalogue.csv",format="ascii")
 PRA = pms['Ra'].data
 PDec = pms['Dec'].data
 PAV = pms['A_v'].data
