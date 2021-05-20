@@ -41,6 +41,10 @@ def hess_bin(filt1=None, # first filter
     # plot hess 
     im = ax.imshow(binned.statistic.T,extent=[xedges[0],xedges[-1],\
                yedges[-1],yedges[0]],cmap='Greys')
+    # force fix aspect ratio of subplot, since gets wonky 
+    # if x and y extents are unequal
+    ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
+        
     fig.colorbar(im,label='Counts')
     
     # return dictionary with relevant info
