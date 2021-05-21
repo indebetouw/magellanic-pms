@@ -12,10 +12,11 @@ pl.ion()
 #########
 # autoset catalog path based on user
 if os.environ['USER'] =='toneill':
-    catalogdir = '/Users/toneill/Repos/Box/HST/'
+    catalogdir = '/Users/toneill/Box/MC/HST/'
 # can expand for others if desired
 else:
     catalogdir="../../MCBox/HST/"
+
 
 ##########
 
@@ -70,7 +71,7 @@ z0=zz0[np.where( (d2<rad0**2)*
 # R136
 dx=np.absolute((RA-ra136)*np.cos(de136*np.pi/180))
 dy=np.absolute(Dec-de136)
-zz0=np.where((dx<rad136)*(dy<rad))[0]
+zz0=np.where((dx<rad136)*(dy<rad136))[0]
 d2=dx[zz0]**2+dy[zz0]**2
 z136=zz0[np.where( (d2<rad136**2)*
                    (fullcat["m_"+colname[0]][zz0]<30)*
@@ -101,7 +102,7 @@ for i in range(17):
     z=np.where( (mag136>=magsteps[i])*(mag136<magsteps[i+1])*(color136>(-2)*(color136<4)) )[0]
     trace[i]=np.median(color136[z])
 z=np.where(trace>0)[0]
-pl.plot(trace[z],magsteps[z]+0.5,'k')
+pl.plot(trace[z],magsteps[z]+0.5,'r')
 
 
 
@@ -134,8 +135,8 @@ color136_dered=color136.copy()
 mag0_dered=mag0.copy()
 mag136_dered=mag136.copy()
 
-av0   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(r[z0],d[z0])])
-av136 = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(r[z136],d[z136])])
+av0   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(RA[z0],Dec[z0])])
+av136 = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(RA[z136],Dec[z136])])
 for l,rbv in zip(label,R_BV):
     if l in colname[0]:
         color0_dered = color0_dered - av0*rbv/R_BV[0]

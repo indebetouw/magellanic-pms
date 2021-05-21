@@ -15,8 +15,8 @@ pl.ion()
 #########
 # autoset paths for catalogs based on user
 if os.environ['USER'] =='toneill':
-    catdir = '/Users/toneill/Repos/Box/HST/'
-    almadir ='/Users/toneill/Repos/Box/ALMA/'
+    catdir = '/Users/toneill/Box/MC/HST/'
+    almadir ='/Users/toneill/Box/MC/ALMA/'
 else:
     catdir="../../MCBox/HST/"
     almadir="../../MCBox/ALMA/"

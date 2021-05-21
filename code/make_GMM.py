@@ -9,6 +9,7 @@ Created on Thu May 20 15:20:55 2021
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
+from sklearn.mixture import GaussianMixture
 
 '''
 #############################################
@@ -16,9 +17,6 @@ Utility script to create a univariate Gaussian mixture model
 #############################################
 '''
 
-from matplotlib import pyplot as plt
-import numpy as np
-from sklearn.mixture import GaussianMixture
 
 # mostly taken from https://www.astroml.org/book_figures/chapter4/fig_GMM_1D.html
 # lots of room to improve this
@@ -58,7 +56,7 @@ def fit_gmm(X=None, # one dimensional variable to fit
     pdf = np.exp(logprob)
     pdf_individual = responsibilities * pdf[:, np.newaxis]
     
-    ax.hist(X, 30, density=True, histtype='stepfilled', alpha=0.4)
+    ax.hist(X, density=True, histtype='stepfilled', alpha=0.4,bins=100)
     ax.plot(x, pdf, '-k')
     ax.plot(x, pdf_individual, '--k')
     ax.text(0.04, 0.96, "Best-fit Mixture",
@@ -91,9 +89,9 @@ def fit_gmm(X=None, # one dimensional variable to fit
     ax.set_xlabel('$x$')
     ax.set_ylabel(r'$p({\rm class}|x)$')
     
-    ax.text(-5, 0.3, 'class 1', rotation='vertical')
+    #ax.text(-5, 0.3, 'class 1', rotation='vertical')
     #ax.text(0, 0.5, 'class 2', rotation='vertical')
-    ax.text(3, 0.3, 'class 2', rotation='vertical')
+    #ax.text(3, 0.3, 'class 2', rotation='vertical')
     
     plt.show()
 

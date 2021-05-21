@@ -20,7 +20,8 @@ def hess_bin(filt1=None, # first filter
               filt2=None, # second filter)
               xbins=None,ybins=None,# bin edges
               ax=None, # mpl subplot to use
-              fig=None): # mplt figure to use
+              fig=None, # mplt figure to use
+              cm='Greys'): # cmap to use
     
     ##### plots filter 1 - filter 2 on x-axis, and filter 1 on yaxis
     # returns counts/bin
@@ -40,7 +41,7 @@ def hess_bin(filt1=None, # first filter
     
     # plot hess 
     im = ax.imshow(binned.statistic.T,extent=[xedges[0],xedges[-1],\
-               yedges[-1],yedges[0]],cmap='Greys')
+               yedges[-1],yedges[0]],cmap=cm)
     # force fix aspect ratio of subplot, since gets wonky 
     # if x and y extents are unequal
     ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
