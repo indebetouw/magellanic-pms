@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 import os, copy, pickle
 from make_2dKDE import twoD_kde
 from make_Hess import hess_bin
+from matplotlib.colors import BoundaryNorm, DivergingNorm, ListedColormap
+
 # autoset catalog path based on user
 if os.environ['USER'] =='toneill':
     catalogdir = '/Users/toneill/Box/MC/HST/'
@@ -65,17 +67,26 @@ def plot_svc_decision_function(model, ax=None, plot_support=True):
 
 if __name__ == '__main__': 
     
+    # whether to include only longer wavelengths in training
+    long = True
+    
+    if long:
+        features = ['m_f775w','m_f110w','m_f160w']
+    if not long:
+        features = ['m_f555w','m_f775w','m_f110w','m_f160w']
+        
     ############# 
     # Load and clean training set 
     train_full = pd.read_csv(catalogdir+'Ksoll2018_training_set.csv')
     train = copy.deepcopy(train_full)
     # drop any entries with missing mag estimates - revisit later to be less strict?
-    train = train.dropna(how='any',subset=['m_f555w','m_f775w','m_f110w','m_f160w'])
+    train = train.dropna(how='any',subset=features)
     for m in ['m_f110w','m_f160w']:
         train.drop(train[train[m]>30].index,inplace=True)
     
     ########### 
     # Replicate Fig 16 in Ksoll+ 2018 with entire training set
+    '''
     fig = plt.figure(figsize=(8,8))
     ax1 = fig.add_subplot(111)
     s=ax1.scatter(train['m_f555w']-train['m_f775w'],train['m_f555w'],
@@ -89,11 +100,12 @@ if __name__ == '__main__':
     fig.colorbar(s,label='P(PMS)')
     ax1.set_title('R136 Training Set')
     fig.tight_layout()
+    '''
     
     ###########
     # Split into training & testing sets to make SVM
     y = np.where(train['pms_membership_prob'].values >= 0.85, 1, 0)
-    X = train[['m_f555w','m_f775w','m_f110w','m_f160w']].to_numpy()
+    X = train[features].to_numpy()
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
                         test_size=0.3) # 70% training and 30% test
      
@@ -128,26 +140,47 @@ if __name__ == '__main__':
     #clf.n_support_
     
     #########
-    # Visualize results
-        
+    # Plot
+    
+    # make custom cmap for binary pms training probs 
+    cmap = ListedColormap(['darkblue', 'crimson'])
+    bounds=[0,0.85,1]
+    norm = BoundaryNorm(bounds, cmap.N)    
+    # choosing what mags to plot & label
+    plot1 = 1
+    plot2 = 2
+    feat_title = [features[i][2::] for i in range(len(features))]
+    
+    ## plot
     fig, [ax1,ax2] = plt.subplots(2,1,figsize=(6,8),sharex=True,sharey=True)
+    ax1.set_title('R136 with '+str(feat_title))
     # plot training set
-    s1=ax1.scatter(X_train[:, 0]-X_train[:,1], X_train[:, 0], c=y_train, 
-                cmap='RdYlBu_r',s=0.7)  
-    ax1.set_title('R136 Training set')
-    ax1.set_ylabel('F555W [mag]')
+    s1=ax1.scatter(X_train[:, plot1]-X_train[:,plot2], X_train[:, plot1], 
+                   c=y_train, 
+                   norm=norm,
+                cmap=cmap,s=0.7)  
+    #ax1.set_title('R136 Training set')
+    ax1.set_ylabel(features[plot1][2::],fontsize=12)
+    ax1.text(0.05,0.9,'Training Set',
+             transform=ax1.transAxes,fontsize=12)
+    #ax1.set_ylabel(features[plot1][2::]+' - '+features[plot2][2::])
     fig.colorbar(s1,ax=ax1,label='P(PMS)')
     # plot testing set
-    s2=ax2.scatter(X_test[:, 0]-X_test[:, 1], X_test[:, 0], c=y_prob[:,1], 
+    s2=ax2.scatter(X_test[:, plot1]-X_test[:, plot2], X_test[:, plot1], 
+                   c=y_prob[:,1], 
                 cmap='RdYlBu_r',s=0.7)  
-    ax2.set_title('R136 Testing set')
-    ax2.set_xlabel('F555W - F775W [mag]')
-    ax2.set_ylabel('F555W [mag]')
-    ax2.text(0.65,0.9,
+    #ax2.set_title('R136 Testing set')
+    ax2.set_xlabel(features[plot1][2::]+' - '+features[plot2][2::],fontsize=12)
+    ax2.set_ylabel(features[plot1][2::],fontsize=12)
+    ax2.text(0.05,0.9,'Testing Set',
+             transform=ax2.transAxes,fontsize=12)
+    ax2.text(0.05,0.8,
              'Accuracy: %.1f'%(100*metrics.accuracy_score(y_test, y_pred))+'%',
              transform=ax2.transAxes)
     ax2.invert_yaxis()
     fig.colorbar(s2,ax=ax2,label='P(PMS)')
+    
+    fig.tight_layout()
         
     ########################################################################
     # Run SVM on entirety of 30Dor data
