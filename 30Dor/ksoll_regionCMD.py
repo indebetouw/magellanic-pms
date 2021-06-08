@@ -78,14 +78,14 @@ z136=zz0[np.where( (d2<rad136**2)*
                    (fullcat["m_"+colname[1]][zz0]<30)*
                    (fullcat["m_"+magname[0]][zz0]<30))[0]]
 
-pl.clf()
+#pl.clf()
 color136= ( fullcat["m_"+colname[0]] - fullcat["m_"+colname[1]] )[z136]
 mag136  = fullcat["m_"+magname[0]][z136]
 
 color0= ( fullcat["m_"+colname[0]] - fullcat["m_"+colname[1]] )[z0]
 mag0  = fullcat["m_"+magname[0]][z0]
 
-
+pl.figure()
 pl.subplot(121)
 pl.plot(color136,mag136,'k,')
 pl.plot(color0,mag0,'.',color='green')
@@ -106,12 +106,12 @@ pl.plot(trace[z],magsteps[z]+0.5,'r')
 
 
 
-f=open(name0+"."+colname[0]+"-"+colname[1]+"_"+magname[0]+".all.reg","w")
-f.write("fk5\n")
-for i in range(len(z0)):
-    f.write('circle(%f,%f,0.5")\n'%(RA[z0[i]],Dec[z0[i]]))
+#f=open(name0+"."+colname[0]+"-"+colname[1]+"_"+magname[0]+".all.reg","w")
+#f.write("fk5\n")
+#for i in range(len(z0)):
+#    f.write('circle(%f,%f,0.5")\n'%(RA[z0[i]],Dec[z0[i]]))
 
-f.close()
+#f.close()
 
 
 #----------------------------------------
@@ -251,23 +251,19 @@ for l,rbv in zip(label,R_BV):
 
 pl.plot(pcolor0_dered,pmag0_dered,'cx')
 
-f=open(name0+"."+colname[0]+"-"+colname[1]+"_"+magname[0]+".pms.reg","w")
-f.write("fk5\n")
-for i in range(len(pz0)):
-    f.write('circle(%f,%f,0.5") # text={%4.2f}\n'%(PRA[pz0[i]],PDec[pz0[i]],pms['p_mean'][pz0[i]]))
+#f=open(name0+"."+colname[0]+"-"+colname[1]+"_"+magname[0]+".pms.reg","w")
+#f.write("fk5\n")
+#for i in range(len(pz0)):
+#    f.write('circle(%f,%f,0.5") # text={%4.2f}\n'%(PRA[pz0[i]],PDec[pz0[i]],pms['p_mean'][pz0[i]]))
+#f.close()
 
-f.close()
-
-
-pl.savefig(name0+".cmd."+colname[0]+"-"+colname[1]+"_"+magname[0]+".full.png")
-
-
+#pl.savefig(name0+".cmd."+colname[0]+"-"+colname[1]+"_"+magname[0]+".full.png")
 
 
 # ----------------------------------------------
 # zoom into red-corrected CMD
-
-pl.clf()
+pl.figure()
+#pl.clf()
 pl.plot(color0_dered,mag0_dered,'.')
 
 # median line of r136
