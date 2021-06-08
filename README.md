@@ -13,3 +13,4 @@ PMS selection and analysis, generally using HST data
 - code/make_Hess.py: take mags in two filters, e.g. V and I, and make a Hess diagram
 - code/make_2dKDE.py: take any two spatial coordinates, e.g. RA and Dec of PMS stars, and make 2d kernel density estimation
 - code/make_GMM.py: fit a univariate Gaussian mixture model
+- code/build_SVM.py: train and run a Support Vector Machine to estimate PMS star membership probability
