@@ -6,10 +6,15 @@ import pandas as pd
 from sklearn import svm, metrics
 from sklearn.model_selection import train_test_split
 import os, copy, pickle
-from make_2dKDE import twoD_kde
-from make_Hess import hess_bin
-from matplotlib.colors import BoundaryNorm, DivergingNorm, ListedColormap
-
+#from make_2dKDE import twoD_kde
+#from make_Hess import hess_bin
+from matplotlib.colors import BoundaryNorm, ListedColormap
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+from sklearn.metrics import roc_curve
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import GridSearchCV
 # autoset catalog path based on user
 if os.environ['USER'] =='toneill':
     catalogdir = '/Users/toneill/Box/MC/HST/'
@@ -68,13 +73,14 @@ def plot_svc_decision_function(model, ax=None, plot_support=True):
 if __name__ == '__main__': 
     
     # whether to include only longer wavelengths in training
-    long = True
+    long = False
     
     if long:
         features = ['m_f775w','m_f110w','m_f160w']
     if not long:
         features = ['m_f555w','m_f775w','m_f110w','m_f160w']
-        
+    
+    feat_title = [features[i][2::] for i in range(len(features))]
     ############# 
     # Load and clean training set 
     train_full = pd.read_csv(catalogdir+'Ksoll2018_training_set.csv')
@@ -109,11 +115,38 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
                         test_size=0.3) # 70% training and 30% test
      
-    ######### 
+    ###############################################################
     # Build SVM
-    #       - kernel choices include linear, poly, and radial basis fxn
+    #       - kernel choices include linear, poly, sigmoid, and radial basis fxn (rbf)
+        
+    ######### Cross validate hyperparameters
     #       - C is cost function (~error tolerance)
-    clf = svm.SVC(kernel='rbf',probability=True)#C=1e6,
+    #       - gamma is
+    #  - could also add kernel choice to this but would increase comp time
+    
+    # instantiate SVM with default hyperparams and no prob. calc
+    # to reduce comp time
+    SM = svm.SVC(kernel='rbf')
+    param_grid = {'C':list(np.logspace(np.log10(10),np.log10(20000),6)),
+                  'gamma':list(np.logspace(np.log10(0.01),np.log10(3),5))}
+        #'C': [10, 100, 1000, 10000],
+         #         'gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]}
+    grid = GridSearchCV(SM, param_grid, cv = 3)
+    
+    grid.fit(X_train, y_train)
+    print(grid.best_params_)    
+        
+    #### examine the best model
+    # best score achieved during the GridSearchCV
+    print('GridSearch CV best score : {:.4f}\n\n'.format(grid.best_score_))
+    # print parameters that give the best results
+    print('Parameters that give the best results :','\n\n', (grid.best_params_))
+    # print estimator that was chosen by the GridSearch
+    print('\n\nEstimator that was chosen by the search :','\n\n', (grid.best_estimator_))
+    
+    ######### Run SVM using CVd hyperparams
+    clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'],
+                  gamma=grid.best_params_['gamma'])#C=1e6,
                                       
     # Train the model using the training sets
     clf.fit(X_train, y_train)
@@ -123,13 +156,33 @@ if __name__ == '__main__':
     
     ######### 
     # Calculate performance metrics
+    print()
+    print(classification_report(y_test, y_pred,
+                            target_names=['Non-PMS','PMS']))
+    
+    # plot confusion matrix to see which labels
+    # likely to get confused
+    # e.g., how many "true" PMS stars labeled by SVM as Non-PMS
     print(metrics.confusion_matrix(y_test,y_pred))
-    print(metrics.classification_report(y_test,y_pred))
+    
+    mat = confusion_matrix(y_test, y_pred)
+    plt.figure()
+    sns.heatmap(mat.T, square=True, annot=True, fmt='d', cbar=False,
+                xticklabels=['Non-PMS','PMS'],
+                yticklabels=['Non-PMS','PMS'])
+    plt.xlabel('true label')
+    plt.ylabel('predicted label')
+    plt.title(str(feat_title))    
+    
     # Model Accuracy: how often is the classifier correct?
     print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
-    # Model Precision: what percentage of positive tuples are labeled as such?
+    
+    # Model Precision: what fraction of predicted positive outcomes are correct?
+    # (ratio of true positives to total # of positives)
     print("Precision:",metrics.precision_score(y_test, y_pred))
-    # Model Recall: what percentage of positive tuples are labelled as such?
+    
+    # Model Recall: what fraction of originally labeled PMS (true positives + false negatives)
+    # are correctly identified? (ratio of true positives to (true pos + false negative))
     print("Recall:",metrics.recall_score(y_test, y_pred))
 
     # inspect support vectors
@@ -139,17 +192,35 @@ if __name__ == '__main__':
     # get num of SVs for each class
     #clf.n_support_
     
-    #########
-    # Plot
+    ### plot ROC (receiver operating characteristic) curve
+    
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    
+    ### ROC AUC (area under curve) can compare classifier performances
+    # best possible score is 1, completely random classifier has ROC AUC = 0.5
+    # (percent of ROC plot underneath the curve)
+    ROC_AUC = roc_auc_score(y_test, y_pred)
+    print('ROC AUC : {:.4f}'.format(ROC_AUC))        
+    
+    plt.figure()
+    plt.plot(fpr, tpr, linewidth=2,c='cornflowerblue')
+    plt.plot([0,1], [0,1], 'k--' )
+    plt.title('ROC curve for '+str(feat_title)+', ROC AUC : {:.4f}'.format(ROC_AUC))
+    plt.xlabel('False Positive Rate (1 - Specificity)')
+    plt.ylabel('True Positive Rate (Sensitivity)')
+    
+    
+    
+    #############################################
+    # Plot CMD of results
     
     # make custom cmap for binary pms training probs 
     cmap = ListedColormap(['darkblue', 'crimson'])
     bounds=[0,0.85,1]
     norm = BoundaryNorm(bounds, cmap.N)    
     # choosing what mags to plot & label
-    plot1 = 1
-    plot2 = 2
-    feat_title = [features[i][2::] for i in range(len(features))]
+    plot1 = 0
+    plot2 = 1
     
     ## plot
     fig, [ax1,ax2] = plt.subplots(2,1,figsize=(6,8),sharex=True,sharey=True)
