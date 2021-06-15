@@ -115,6 +115,14 @@ if __name__ == '__main__':
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
                         test_size=0.3) # 70% training and 30% test
      
+    
+    #from sklearn import preprocessing    
+    #scaler = preprocessing.StandardScaler().fit(X_train)
+    #scaler = preprocessing.MinMaxScaler().fit(X_train)  
+    #scaler = preprocessing.RobustScaler().fit(X_train)
+    #scaler = preprocessing.Normalizer().fit(X_train)
+    #X_test_scaled = scaler.transform(X_test)
+    
     ###############################################################
     # Build SVM
     #       - kernel choices include linear, poly, sigmoid, and radial basis fxn (rbf)
@@ -127,11 +135,11 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':list(np.logspace(np.log10(10),np.log10(20000),6)),
-                  'gamma':list(np.logspace(np.log10(0.01),np.log10(3),5))}
+    param_grid = {'C':list(np.logspace(np.log10(1),np.log10(100000),10)),
+                  'gamma':list(np.logspace(np.log10(0.01),np.log10(100),10))}
         #'C': [10, 100, 1000, 10000],
          #         'gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]}
-    grid = GridSearchCV(SM, param_grid, cv = 3)
+    grid = GridSearchCV(SM, param_grid, cv = 3,n_jobs=7)
     
     grid.fit(X_train, y_train)
     print(grid.best_params_)    
