@@ -116,12 +116,13 @@ if __name__ == '__main__':
                         test_size=0.3) # 70% training and 30% test
      
     
-    #from sklearn import preprocessing    
+    from sklearn import preprocessing    
     #scaler = preprocessing.StandardScaler().fit(X_train)
     #scaler = preprocessing.MinMaxScaler().fit(X_train)  
     #scaler = preprocessing.RobustScaler().fit(X_train)
     #scaler = preprocessing.Normalizer().fit(X_train)
     #X_test_scaled = scaler.transform(X_test)
+    #X_train_scaled = scaler.transform(X_train)
     
     ###############################################################
     # Build SVM
@@ -135,16 +136,35 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':list(np.logspace(np.log10(1),np.log10(100000),10)),
-                  'gamma':list(np.logspace(np.log10(0.01),np.log10(100),10))}
+    param_grid = {'C':[2.**n for n in np.arange(-1,11,0.5)],
+                  'gamma':[2.**n for n in np.arange(-5,4,1)]}
+        
+        #'C':list(np.logspace(np.log10(0.1),np.log10(500),11)),
+        #          'gamma':list(np.logspace(np.log10(0.0001),np.log10(2),11))}
         #'C': [10, 100, 1000, 10000],
          #         'gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]}
-    grid = GridSearchCV(SM, param_grid, cv = 3,n_jobs=7)
+         
+    '''
+    NOTE: n_jobs controls how many cores to use,
+        most of the time works but has a known bug where sometimes
+        can result in a "broken pipe" error
+        
+        if encounter, just try running it again and it normally resolves itself
+
+
+    '''     
+         
+         
+    grid = GridSearchCV(SM, param_grid, n_jobs=6, refit=True,verbose=3) #n_jobs=7, 
+    
+    
+    
     
     grid.fit(X_train, y_train)
     print(grid.best_params_)    
         
     #### examine the best model
+    print()
     # best score achieved during the GridSearchCV
     print('GridSearch CV best score : {:.4f}\n\n'.format(grid.best_score_))
     # print parameters that give the best results
@@ -155,6 +175,8 @@ if __name__ == '__main__':
     ######### Run SVM using CVd hyperparams
     clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'],
                   gamma=grid.best_params_['gamma'])#C=1e6,
+    
+    #clf = svm.SVC(kernel='rbf',probability=True)
                                       
     # Train the model using the training sets
     clf.fit(X_train, y_train)
