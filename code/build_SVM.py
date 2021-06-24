@@ -14,7 +14,7 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 # autoset catalog path based on user
 if os.environ['USER'] =='toneill':
     catalogdir = '/Users/toneill/Box/MC/HST/'
@@ -74,11 +74,15 @@ if __name__ == '__main__':
     
     # whether to include only longer wavelengths in training
     long = False
+    full = True
+    extin = False
     
     if long:
         features = ['m_f775w','m_f110w','m_f160w']
-    if not long:
+    if full:
         features = ['m_f555w','m_f775w','m_f110w','m_f160w']
+    if extin:
+        features = ['m_f110w','m_f160w','A_v']
     
     feat_title = [features[i][2::] for i in range(len(features))]
     ############# 
@@ -110,24 +114,36 @@ if __name__ == '__main__':
     
     ###########
     # Split into training & testing sets to make SVM
-    y = np.where(train['pms_membership_prob'].values >= 0.85, 1, 0)
-    X = train[features].to_numpy()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                        test_size=0.3) # 70% training and 30% test
-     
+    y = np.where(train['pms_membership_prob'].values >= 0.9, 1, 0)
     
-    from sklearn import preprocessing    
-    #scaler = preprocessing.StandardScaler().fit(X_train)
-    #scaler = preprocessing.MinMaxScaler().fit(X_train)  
-    #scaler = preprocessing.RobustScaler().fit(X_train)
-    #scaler = preprocessing.Normalizer().fit(X_train)
-    #X_test_scaled = scaler.transform(X_test)
-    #X_train_scaled = scaler.transform(X_train)
+    scale = False
+    
+    if scale:
+        
+        ### doesn't seem to impact accuracy much
+        
+        from sklearn import preprocessing   
+        
+        X = train[features].to_numpy()
+        scaler = preprocessing.StandardScaler().fit(X)
+        #scaler = preprocessing.MinMaxScaler().fit(X)  
+        #scaler = preprocessing.RobustScaler().fit(X)
+        #scaler = preprocessing.Normalizer().fit(X)
+        X_train, X_test, y_train, y_test = train_test_split(
+            scaler.transform(X), y, 
+                            test_size=0.3) # 70% training and 30% test
+        
+        
+    if not scale:
+        
+        X = train[features].to_numpy()
+        X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                            test_size=0.3) # 70% training and 30% test
+     
     
     ###############################################################
     # Build SVM
     #       - kernel choices include linear, poly, sigmoid, and radial basis fxn (rbf)
-        
     ######### Cross validate hyperparameters
     #       - C is cost function (~error tolerance)
     #       - gamma is
@@ -136,30 +152,27 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':[2.**n for n in np.arange(-1,11,0.5)],
-                  'gamma':[2.**n for n in np.arange(-5,4,1)]}
-        
-        #'C':list(np.logspace(np.log10(0.1),np.log10(500),11)),
-        #          'gamma':list(np.logspace(np.log10(0.0001),np.log10(2),11))}
-        #'C': [10, 100, 1000, 10000],
-         #         'gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8]}
+    param_grid = {'C':[2.**n for n in np.linspace(4,14,6)],
+                  'gamma':[2.**n for n in np.linspace(-5,3,6)]}
          
     '''
-    NOTE: n_jobs controls how many cores to use,
+    - NOTE: n_jobs controls how many cores to use,
         most of the time works but has a known bug where sometimes
         can result in a "broken pipe" error
-        
-        if encounter, just try running it again and it normally resolves itself
-
-
+    - if encounter, just try running it again and it normally resolves itself
     '''     
-         
-         
-    grid = GridSearchCV(SM, param_grid, n_jobs=6, refit=True,verbose=3) #n_jobs=7, 
-    
-    
-    
-    
+    strat = False
+    if strat:
+        # create  K-fold with stratification training/test balanced
+        # repeat to reduce variance
+        cv = RepeatedStratifiedKFold(n_splits=3,n_repeats=3)         
+        grid = GridSearchCV(SM, param_grid, n_jobs=7, cv=cv,
+                            refit=True,verbose=1) 
+        
+    if not strat:
+        grid = GridSearchCV(SM, param_grid, n_jobs=7, 
+                            refit=True,verbose=1) 
+        
     grid.fit(X_train, y_train)
     print(grid.best_params_)    
         
@@ -189,7 +202,9 @@ if __name__ == '__main__':
     print()
     print(classification_report(y_test, y_pred,
                             target_names=['Non-PMS','PMS']))
-    
+    # Model Accuracy: how often is the classifier correct?
+    print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+
     # plot confusion matrix to see which labels
     # likely to get confused
     # e.g., how many "true" PMS stars labeled by SVM as Non-PMS
@@ -204,8 +219,6 @@ if __name__ == '__main__':
     plt.ylabel('predicted label')
     plt.title(str(feat_title))    
     
-    # Model Accuracy: how often is the classifier correct?
-    print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
     
     # Model Precision: what fraction of predicted positive outcomes are correct?
     # (ratio of true positives to total # of positives)
@@ -264,6 +277,7 @@ if __name__ == '__main__':
     ax1.set_ylabel(features[plot1][2::],fontsize=12)
     ax1.text(0.05,0.9,'Training Set',
              transform=ax1.transAxes,fontsize=12)
+        
     #ax1.set_ylabel(features[plot1][2::]+' - '+features[plot2][2::])
     fig.colorbar(s1,ax=ax1,label='P(PMS)')
     # plot testing set
