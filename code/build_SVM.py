@@ -125,9 +125,9 @@ if __name__ == '__main__':
         from sklearn import preprocessing   
         
         X = train[features].to_numpy()
-        scaler = preprocessing.StandardScaler().fit(X)
+        #scaler = preprocessing.StandardScaler().fit(X)
         #scaler = preprocessing.MinMaxScaler().fit(X)  
-        #scaler = preprocessing.RobustScaler().fit(X)
+        scaler = preprocessing.RobustScaler().fit(X)
         #scaler = preprocessing.Normalizer().fit(X)
         X_train, X_test, y_train, y_test = train_test_split(
             scaler.transform(X), y, 
@@ -186,8 +186,8 @@ if __name__ == '__main__':
     print('\n\nEstimator that was chosen by the search :','\n\n', (grid.best_estimator_))
     
     ######### Run SVM using CVd hyperparams
-    clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'],
-                  gamma=grid.best_params_['gamma'])#C=1e6,
+    clf = svm.SVC(kernel='rbf',probability=True)#,C=grid.best_params_['C'],
+                  #gamma=grid.best_params_['gamma'])#C=1e6,
     
     #clf = svm.SVC(kernel='rbf',probability=True)
                                       
