@@ -36,8 +36,8 @@ rad136=4./60
 colname=['f555w','f775u']  
 magname=['f555w']
 
-colname=['f110w','f160w']  
-magname=['f110w']
+#colname=['f110w','f160w']  
+#magname=['f110w']
 
 # TODO something for combining WCS and ACS in 775
 
@@ -135,8 +135,8 @@ color136_dered=color136.copy()
 mag0_dered=mag0.copy()
 mag136_dered=mag136.copy()
 
-av0   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(RA[z0],Dec[z0])])
-av136 = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(RA[z136],Dec[z136])])
+#av0   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(RA[z0],Dec[z0])])
+#av136 = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) for ri,di in zip(RA[z136],Dec[z136])])
 for l,rbv in zip(label,R_BV):
     if l in colname[0]:
         color0_dered = color0_dered - av0*rbv/R_BV[0]

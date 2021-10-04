@@ -80,7 +80,7 @@ if __name__ == '__main__':
     if long:
         features = ['m_f775w','m_f110w','m_f160w']
     if full:
-        features = ['m_f555w','m_f775w','m_f110w','m_f160w']
+        features = ['m_f555w','m_f775w','m_f110w','m_f160w']#,'A_v']
     if extin:
         features = ['m_f110w','m_f160w','A_v']
     
@@ -91,8 +91,12 @@ if __name__ == '__main__':
     train = copy.deepcopy(train_full)
     # drop any entries with missing mag estimates - revisit later to be less strict?
     train = train.dropna(how='any',subset=features)
-    for m in ['m_f110w','m_f160w']:
+    for m in ['m_f110w','m_f160w','m_f555w','m_f775w']:
         train.drop(train[train[m]>30].index,inplace=True)
+        
+    #pick_df = pickle.dump(train,open('trimmed_ksoll_training.p','wb')) 
+    #train[['m_f555w', 'm_f775w', 'm_f110w', 'm_f160w', 'A_v',
+    #       'pms_membership_prob']].to_csv('trimmed_ksoll_training.csv',index=False)
     
     ########### 
     # Replicate Fig 16 in Ksoll+ 2018 with entire training set
@@ -101,7 +105,7 @@ if __name__ == '__main__':
     ax1 = fig.add_subplot(111)
     s=ax1.scatter(train['m_f555w']-train['m_f775w'],train['m_f555w'],
                 c=train['pms_membership_prob'],
-                cmap='RdYlBu_r',s=0.7)
+                cmap='RdYlBu_r',s=0.3)
     ax1.invert_yaxis()
     ax1.set_xlabel('F555W - F775W')
     ax1.set_ylabel('F555W')
@@ -116,7 +120,7 @@ if __name__ == '__main__':
     # Split into training & testing sets to make SVM
     y = np.where(train['pms_membership_prob'].values >= 0.9, 1, 0)
     
-    scale = False
+    scale = True
     
     if scale:
         
@@ -129,16 +133,24 @@ if __name__ == '__main__':
         #scaler = preprocessing.MinMaxScaler().fit(X)  
         scaler = preprocessing.RobustScaler().fit(X)
         #scaler = preprocessing.Normalizer().fit(X)
-        X_train, X_test, y_train, y_test = train_test_split(
-            scaler.transform(X), y, 
-                            test_size=0.3) # 70% training and 30% test
+        
+        X_train0, X_test0, y_train, y_test = train_test_split(X, y, 
+                            test_size=0.5) # 70% training and 30% test
+        
+        X_train = scaler.transform(X_train0)
+        X_test = scaler.transform(X_test0)
+        
+        
+        #X_train, X_test, y_train, y_test = train_test_split(
+        #    scaler.transform(X), y, 
+         #                   test_size=0.5) # 70% training and 30% test
         
         
     if not scale:
         
         X = train[features].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                            test_size=0.3) # 70% training and 30% test
+                            test_size=0.5) # 70% training and 30% test
      
     
     ###############################################################
@@ -152,8 +164,8 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':[2.**n for n in np.linspace(4,14,6)],
-                  'gamma':[2.**n for n in np.linspace(-5,3,6)]}
+    param_grid = {'C':[2.**n for n in np.linspace(4,14,7)],
+                  'gamma':[2.**n for n in np.linspace(-2,5,7)]}
          
     '''
     - NOTE: n_jobs controls how many cores to use,
@@ -186,16 +198,34 @@ if __name__ == '__main__':
     print('\n\nEstimator that was chosen by the search :','\n\n', (grid.best_estimator_))
     
     ######### Run SVM using CVd hyperparams
-    clf = svm.SVC(kernel='rbf',probability=True)#,C=grid.best_params_['C'],
-                  #gamma=grid.best_params_['gamma'])#C=1e6,
+    clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'], gamma=grid.best_params_['gamma'])
     
-    #clf = svm.SVC(kernel='rbf',probability=True)
-                                      
     # Train the model using the training sets
     clf.fit(X_train, y_train)
     #Predict the response for test dataset
     y_pred = clf.predict(X_test)
     y_prob = clf.predict_proba(X_test)
+    
+    #############################
+    
+    from sklearn.inspection import permutation_importance
+    # this gives relative importance of features in THIS PARTICULAR MODEL
+    # - not intrinsticallly over all models!!! 
+        #https://scikit-learn.org/stable/modules/permutation_importance.html
+
+    perm_importance = permutation_importance(clf, X_test, y_test,n_repeats=30)
+    #sorted_idx = perm_importance.importances_mean.argsort()
+    
+    plt.figure()
+    plt.barh(features, perm_importance.importances_mean,facecolor='cornflowerblue')
+    plt.title("Relative Importance of Features in RBF SVM")  
+    plt.xlabel('Permutation Importance')
+    
+    
+    
+    
+    
+    
     
     ######### 
     # Calculate performance metrics
@@ -222,11 +252,11 @@ if __name__ == '__main__':
     
     # Model Precision: what fraction of predicted positive outcomes are correct?
     # (ratio of true positives to total # of positives)
-    print("Precision:",metrics.precision_score(y_test, y_pred))
+    #print("Precision:",metrics.precision_score(y_test, y_pred))
     
     # Model Recall: what fraction of originally labeled PMS (true positives + false negatives)
     # are correctly identified? (ratio of true positives to (true pos + false negative))
-    print("Recall:",metrics.recall_score(y_test, y_pred))
+    #print("Recall:",metrics.recall_score(y_test, y_pred))
 
     # inspect support vectors
     #clf.support_vectors_
@@ -269,7 +299,7 @@ if __name__ == '__main__':
     fig, [ax1,ax2] = plt.subplots(2,1,figsize=(6,8),sharex=True,sharey=True)
     ax1.set_title('R136 with '+str(feat_title))
     # plot training set
-    s1=ax1.scatter(X_train[:, plot1]-X_train[:,plot2], X_train[:, plot1], 
+    s1=ax1.scatter(X_train0[:, plot1]-X_train0[:,plot2], X_train0[:, plot1], 
                    c=y_train, 
                    norm=norm,
                 cmap=cmap,s=0.7)  
@@ -281,7 +311,7 @@ if __name__ == '__main__':
     #ax1.set_ylabel(features[plot1][2::]+' - '+features[plot2][2::])
     fig.colorbar(s1,ax=ax1,label='P(PMS)')
     # plot testing set
-    s2=ax2.scatter(X_test[:, plot1]-X_test[:, plot2], X_test[:, plot1], 
+    s2=ax2.scatter(X_test0[:, plot1]-X_test0[:, plot2], X_test0[:, plot1], 
                    c=y_prob[:,1], 
                 cmap='RdYlBu_r',s=0.7)  
     #ax2.set_title('R136 Testing set')
@@ -308,15 +338,29 @@ if __name__ == '__main__':
     #k2018_ums = pd.read_csv(catalogdir+'Ksoll2018_HTTP_UMS_selection.csv')
     #cat_full = pd.concat([k2018_pms,k2018_ums], axis=0, ignore_index=True)
     
-    full = copy.deepcopy(cat_full)
+    full = copy.deepcopy(cat_full).reset_index(drop=False)
     # drop any entries with missing mag estimates - revisit later to be less strict?
-    full = full.dropna(how='any',subset=['m_f555w','m_f775u','m_f110w','m_f160w'])
+    full = full.dropna(how='any',subset=['m_f555w','m_f775u'])#,'m_f110w','m_f160w'])
     for m in ['m_f110w','m_f160w','m_f555w','m_f775u']:
-        full.drop(full[full[m]>30].index,inplace=True)  
+        full.drop(full[full[m]>30].index,inplace=True) 
+    for f in ['f_f555w','f_f775u']:
+        full.drop(full[full[f]>2].index,inplace=True)        
     
     # predict PMS probabilities
     X_full = full[['m_f555w','m_f775u','m_f110w','m_f160w']].to_numpy()
-    full_prob = clf.predict_proba(X_full)
+    
+    if scale:
+        #scaler = preprocessing.StandardScaler().fit(X)
+        #scaler = preprocessing.MinMaxScaler().fit(X)  
+        scaler = preprocessing.RobustScaler().fit(X_full)
+        #scaler = preprocessing.Normalizer().fit(X)
+        X_scale = scaler.transform(X_full)        
+        
+    if not scale:
+        
+        X_scale = X_full
+    
+    full_prob = clf.predict_proba(X_scale)
     
     
     #########
@@ -329,7 +373,7 @@ if __name__ == '__main__':
     ax3 = fig.add_subplot(gs[:,1])
     
     ####### plot training set
-    s1=ax1.scatter(X_train[:, 0]-X_train[:,1], X_train[:, 0], c=y_train, 
+    s1=ax1.scatter(X_train0[:, 0]-X_train0[:,1], X_train0[:, 0], c=y_train, 
                 cmap='RdYlBu_r',s=0.7)  
     ax1.set_title('R136 Training set')
     #ax1.set_xlabel('F555W - F775W')
@@ -338,7 +382,7 @@ if __name__ == '__main__':
 
     #ig.colorbar(s1,ax=ax1,label='P(PMS)')
     ####### plot testing set
-    s2=ax2.scatter(X_test[:, 0]-X_test[:, 1], X_test[:, 0], c=y_prob[:,1], 
+    s2=ax2.scatter(X_test0[:, 0]-X_test0[:, 1], X_test0[:, 0], c=y_prob[:,1], 
                 cmap='RdYlBu_r',s=0.7)  
     ax2.set_title('R136 Testing set')
     ax2.set_xlabel('F555W - F775W [mag]')
@@ -353,25 +397,104 @@ if __name__ == '__main__':
     
     s3=ax3.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
                 cmap='RdYlBu_r',s=0.7)  
+    ax3.set_title('New SVM 30Dor')
+    ax3.set_xlabel('F555W - F775W [mag]')
+    ax3.invert_yaxis()
+    ax3.set_ylabel('F555W [mag]')
+    ax3.set_xlim(-1,3.5)
+    ax3.set_ylim(28,12)
+
+    fig.colorbar(s3,ax=ax3,label='P(PMS)')
+    
+    
+    #########
+    # Visualize results
+    
+    fig = plt.figure(constrained_layout=True,figsize=(12,8))
+    gs = GridSpec(1,2, figure=fig)
+    ax2 = fig.add_subplot(gs[0])
+    ax3 = fig.add_subplot(gs[1])
+    
+    #ig.colorbar(s1,ax=ax1,label='P(PMS)')
+    ####### plot testing set
+    s2=ax2.scatter(train['m_f555w']-train['m_f775w'], train['m_f555w'], 
+                   c=train['pms_membership_prob'], 
+                cmap='RdYlBu_r',s=0.7)  
+    ax2.set_title('R136 Testing set')
+    ax2.set_xlabel('F555W - F775W [mag]')
+    ax2.set_ylabel('F555W [mag]')
+    ax2.set_xlim(-1,3.5)
+    ax2.set_ylim(28,12)
+    ax2.text(0.65,0.9,
+             'Accuracy: %.1f'%(100*metrics.accuracy_score(y_test, y_pred))+'%',
+             transform=ax2.transAxes)
+    ax2.set_title('Full training and test set')
+    #fig.colorbar(s2,ax=ax2,label='P(PMS)')
+    
+    s3=ax3.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
+                cmap='RdYlBu_r',s=0.7)  
     ax3.set_title('30Dor')
     ax3.set_xlabel('F555W - F775W [mag]')
     ax3.invert_yaxis()
     ax3.set_ylabel('F555W [mag]')
+    ax3.set_xlim(-1,3.5)
+    ax3.set_ylim(28,12)
+
     fig.colorbar(s3,ax=ax3,label='P(PMS)')
+    
+    
     
     ########################################################################
     # Compare new SVM results to Ksoll2018 results
     
+    from matplotlib.colors import DivergingNorm
+    
+    cmap = LinearSegmentedColormap.from_list('seismic',['mediumblue','lightyellow','red'])
+    
+    norm = DivergingNorm(vmin=0, vcenter=0.5,vmax=1) #lsrk
+    
+    
+    fig,[ax2,ax1] = plt.subplots(1,2,figsize=(12,8),sharex=True,sharey=True)
+    
+    s1=ax1.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
+                cmap='RdYlBu_r',s=0.1)  
+    ax1.set_title('New SVM')
+    ax1.set_xlabel('F555W - F775W [mag]')
+    ax1.set_xlim(-1,3.5)
+    ax1.set_ylim(28,12)
+    ax1.set_ylabel('F555W [mag]')
+    fig.colorbar(s1,ax=ax1,label='P(PMS)')
+    
+    ax2.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c='#333399',s=0.1)  
+    s2 = ax2.scatter(pcolor0,pmag0,s=0.1,c=pms['p_svm'],
+                     cmap='RdYlBu_r',norm=norm)
+    ax2.set_title('Ksoll SVM')
+    fig.colorbar(s2,ax=ax2,label='P(PMS)')
+    fig.tight_layout()
+    ax2.set_ylabel('F555W [mag]')
+    ax2.set_xlabel('F555W - F775W [mag]')
+    
+    
+    
+    ##### thnk working properly now
+    
+    pms_ids = pms['ID'].values-1
+    
+    ksoll_probs = np.array([])
+    new_probs = np.array([])
+    for i in range(len(full)):
+        corr_pms_idx = np.where(pms_ids == full['index'].values[i])
+        print(i,corr_pms_idx)
+        if corr_pms_idx[0] >= 0:
+            ksoll_probs = np.append(ksoll_probs,pms['p_svm'].values[corr_pms_idx])
+            new_probs = np.append(new_probs,full_prob[:,1][i])
     
     
     plt.figure()
-    plt.scatter(full['p_svm'],full_prob[:,1])
-    
-    
-    
-    
-    
-    
+    plt.scatter(ksoll_probs,new_probs,s=0.1,c='k')
+    plt.xlabel('Ksoll P(PMS)')
+    plt.ylabel('New SVM P(PMS)')
+    plt.title('Comparing new to Ksoll18 P(PMS)')
     
     
     
