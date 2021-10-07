@@ -1,6 +1,38 @@
 # create extinction map from k nearest neighbor e.g. UMS star list
 # 20210518 added single point function to query
 
+'''
+desired call:
+    av0   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) \
+                  for ri,di in zip(RA[z0],Dec[z0])])   
+
+'''
+
+def weight_NN(dists,eps=eps):
+    
+    # following equations 1 and 2 in Ksoll2018
+    import numpy as np
+    wt0 = 1/(dists**2 + eps**2)
+    wt = wt0 / np.sum(wt0)
+    
+    return wt
+
+def kNN_regr_Av(UCoords,tCoords,UAV,eps,nnear,ncore=7):
+    
+    # perform KNN regression to predict Av
+    # more efficient than brute force search & parallel proc if want
+    
+    # using KD tree because more efficient than ball tree in low-dimensions
+    # (thru testing, here ball tree takes ~2x as long)
+    from sklearn.neighbors import KNeighborsRegressor
+     
+    nreg = KNeighborsRegressor(n_neighbors=nnear,weights=weight_NN,
+                               n_jobs=ncore,algorithm='kd_tree').fit(UCoords,UAV)
+    predAv = nreg.predict(tCoords)
+    #nnD, nnIDX = nreg.kneighbors(testCoords)
+
+    return predAv
+
 def kNN_extinction(rastar,destar,avstar,eps,nnear,r,d):
      import numpy as np
      
