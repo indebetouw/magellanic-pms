@@ -8,7 +8,7 @@ desired call:
 
 '''
 
-def weight_NN(dists,eps=eps):
+def weight_NN(dists,eps=1):
     
     # following equations 1 and 2 in Ksoll2018
     import numpy as np

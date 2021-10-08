@@ -14,12 +14,15 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from sklearn.metrics import roc_curve
 from sklearn.metrics import roc_auc_score
+from astropy.table import Table
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 # autoset catalog path based on user
 if os.environ['USER'] =='toneill':
     catalogdir = '/Users/toneill/Box/MC/HST/'
 else:
     catalogdir="../../MCBox/HST/"
+from kNN_extinction_map import kNN_regr_Av #kNN_extinction, 
+
 
 '''
 #################################################################
@@ -74,8 +77,9 @@ if __name__ == '__main__':
     
     # whether to include only longer wavelengths in training
     long = False
-    full = True
+    full = False
     extin = False
+    dered = True
     
     if long:
         features = ['m_f775w','m_f110w','m_f160w']
@@ -83,16 +87,39 @@ if __name__ == '__main__':
         features = ['m_f555w','m_f775w','m_f110w','m_f160w']#,'A_v']
     if extin:
         features = ['m_f110w','m_f160w','A_v']
+    if dered:
+        features = ['m_f555w_dered','m_f775w_dered','A_v']#'m_f110w_dered','m_f160w_dered']#,'A_v']
     
     feat_title = [features[i][2::] for i in range(len(features))]
     ############# 
     # Load and clean training set 
+    
+    ########################## DE REDDEN 
+    nnear=20
+    eps=10./3600   
+    ums=Table.read(catalogdir+"Ksoll2018_HTTP_UMS_selection.csv",format="ascii").to_pandas()
+    URA = ums['Ra'].values
+    UDec = ums['Dec'].values
+    UAV = ums['A_v'].values    
+    UCoords = [[URA[i],UDec[i]] for i in range(len(URA))]
+    
     train_full = pd.read_csv(catalogdir+'Ksoll2018_training_set.csv')
+    trCoords = [[train_full['Ra'].values[i],train_full['Dec'].values[i]] for i in range(len(train_full))]
+    #tr_av0 = kNN_regr_Av(UCoords,trCoords,UAV,eps,nnear,ncore=7)
+    tr_av0 = train_full['A_v']
+    train_full['AvNN'] = tr_av0
+    ## note that values getting from NN Av here vary slightly from Ksoll training Avs
+    train_full['m_f555w_dered'] = train_full['m_f555w'] - tr_av0*R_BV[0]/R_BV[0]
+    train_full['m_f775w_dered'] = train_full['m_f775w'] - tr_av0*R_BV[1]/R_BV[0]
+    train_full['m_f110w_dered'] = train_full['m_f110w'] - tr_av0*R_BV[2]/R_BV[0]
+    train_full['m_f160w_dered'] = train_full['m_f160w'] - tr_av0*R_BV[3]/R_BV[0]    
+    
     train = copy.deepcopy(train_full)
     # drop any entries with missing mag estimates - revisit later to be less strict?
     train = train.dropna(how='any',subset=features)
     for m in ['m_f110w','m_f160w','m_f555w','m_f775w']:
         train.drop(train[train[m]>30].index,inplace=True)
+    train = train.reset_index(drop=False)
         
     #pick_df = pickle.dump(train,open('trimmed_ksoll_training.p','wb')) 
     #train[['m_f555w', 'm_f775w', 'm_f110w', 'm_f160w', 'A_v',
@@ -103,7 +130,8 @@ if __name__ == '__main__':
     '''
     fig = plt.figure(figsize=(8,8))
     ax1 = fig.add_subplot(111)
-    s=ax1.scatter(train['m_f555w']-train['m_f775w'],train['m_f555w'],
+    s=ax1.scatter(train['m_f555w_dered']-train['m_f775w_dered'],
+                  train['m_f555w_dered'],
                 c=train['pms_membership_prob'],
                 cmap='RdYlBu_r',s=0.3)
     ax1.invert_yaxis()
@@ -115,10 +143,10 @@ if __name__ == '__main__':
     ax1.set_title('R136 Training Set')
     fig.tight_layout()
     '''
-    
+    #plt.style.use('ggplot')
     ###########
     # Split into training & testing sets to make SVM
-    y = np.where(train['pms_membership_prob'].values >= 0.9, 1, 0)
+    y = np.where(train['pms_membership_prob'].values >= 0.85, 1, 0)
     
     scale = True
     
@@ -130,28 +158,24 @@ if __name__ == '__main__':
         
         X = train[features].to_numpy()
         #scaler = preprocessing.StandardScaler().fit(X)
-        #scaler = preprocessing.MinMaxScaler().fit(X)  
-        scaler = preprocessing.RobustScaler().fit(X)
+        scaler = preprocessing.MinMaxScaler().fit(X)  
+        #scaler = preprocessing.RobustScaler().fit(X)
         #scaler = preprocessing.Normalizer().fit(X)
         
         X_train0, X_test0, y_train, y_test = train_test_split(X, y, 
-                            test_size=0.5) # 70% training and 30% test
+                            test_size=0.3) # 70% training and 30% test
         
         X_train = scaler.transform(X_train0)
         X_test = scaler.transform(X_test0)
-        
-        
-        #X_train, X_test, y_train, y_test = train_test_split(
-        #    scaler.transform(X), y, 
-         #                   test_size=0.5) # 70% training and 30% test
         
         
     if not scale:
         
         X = train[features].to_numpy()
         X_train, X_test, y_train, y_test = train_test_split(X, y, 
-                            test_size=0.5) # 70% training and 30% test
-     
+                            test_size=0.3) # 70% training and 30% test
+        X_train0 = X_train
+        X_test0 = X_test
     
     ###############################################################
     # Build SVM
@@ -164,8 +188,8 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':[2.**n for n in np.linspace(4,14,7)],
-                  'gamma':[2.**n for n in np.linspace(-2,5,7)]}
+    param_grid = {'C':[2.**n for n in np.linspace(4,13,10)],
+                  'gamma':[2.**n for n in np.linspace(-3,6,10)]}
          
     '''
     - NOTE: n_jobs controls how many cores to use,
@@ -182,20 +206,20 @@ if __name__ == '__main__':
                             refit=True,verbose=1) 
         
     if not strat:
-        grid = GridSearchCV(SM, param_grid, n_jobs=7, 
+        grid = GridSearchCV(SM, param_grid, n_jobs=8, 
                             refit=True,verbose=1) 
         
     grid.fit(X_train, y_train)
     print(grid.best_params_)    
         
     #### examine the best model
-    print()
-    # best score achieved during the GridSearchCV
-    print('GridSearch CV best score : {:.4f}\n\n'.format(grid.best_score_))
+    #print()
+    ## best score achieved during the GridSearchCV
+    #print('GridSearch CV best score : {:.4f}\n\n'.format(grid.best_score_))
     # print parameters that give the best results
-    print('Parameters that give the best results :','\n\n', (grid.best_params_))
+    #print('Parameters that give the best results :','\n\n', (grid.best_params_))
     # print estimator that was chosen by the GridSearch
-    print('\n\nEstimator that was chosen by the search :','\n\n', (grid.best_estimator_))
+    #print('\n\nEstimator that was chosen by the search :','\n\n', (grid.best_estimator_))
     
     ######### Run SVM using CVd hyperparams
     clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'], gamma=grid.best_params_['gamma'])
@@ -206,148 +230,35 @@ if __name__ == '__main__':
     y_pred = clf.predict(X_test)
     y_prob = clf.predict_proba(X_test)
     
-    #############################
-    
-    from sklearn.inspection import permutation_importance
-    # this gives relative importance of features in THIS PARTICULAR MODEL
-    # - not intrinsticallly over all models!!! 
-        #https://scikit-learn.org/stable/modules/permutation_importance.html
-
-    perm_importance = permutation_importance(clf, X_test, y_test,n_repeats=30)
-    #sorted_idx = perm_importance.importances_mean.argsort()
-    
-    plt.figure()
-    plt.barh(features, perm_importance.importances_mean,facecolor='cornflowerblue')
-    plt.title("Relative Importance of Features in RBF SVM")  
-    plt.xlabel('Permutation Importance')
-    
-    
-    
-    
-    
-    
-    
-    ######### 
-    # Calculate performance metrics
-    print()
-    print(classification_report(y_test, y_pred,
-                            target_names=['Non-PMS','PMS']))
-    # Model Accuracy: how often is the classifier correct?
-    print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
-
-    # plot confusion matrix to see which labels
-    # likely to get confused
-    # e.g., how many "true" PMS stars labeled by SVM as Non-PMS
-    print(metrics.confusion_matrix(y_test,y_pred))
-    
-    mat = confusion_matrix(y_test, y_pred)
-    plt.figure()
-    sns.heatmap(mat.T, square=True, annot=True, fmt='d', cbar=False,
-                xticklabels=['Non-PMS','PMS'],
-                yticklabels=['Non-PMS','PMS'])
-    plt.xlabel('true label')
-    plt.ylabel('predicted label')
-    plt.title(str(feat_title))    
-    
-    
-    # Model Precision: what fraction of predicted positive outcomes are correct?
-    # (ratio of true positives to total # of positives)
-    #print("Precision:",metrics.precision_score(y_test, y_pred))
-    
-    # Model Recall: what fraction of originally labeled PMS (true positives + false negatives)
-    # are correctly identified? (ratio of true positives to (true pos + false negative))
-    #print("Recall:",metrics.recall_score(y_test, y_pred))
-
-    # inspect support vectors
-    #clf.support_vectors_
-    # get indices of support vectors
-    #clf.support_
-    # get num of SVs for each class
-    #clf.n_support_
-    
-    ### plot ROC (receiver operating characteristic) curve
-    
-    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
-    
-    ### ROC AUC (area under curve) can compare classifier performances
-    # best possible score is 1, completely random classifier has ROC AUC = 0.5
-    # (percent of ROC plot underneath the curve)
-    ROC_AUC = roc_auc_score(y_test, y_pred)
-    print('ROC AUC : {:.4f}'.format(ROC_AUC))        
-    
-    plt.figure()
-    plt.plot(fpr, tpr, linewidth=2,c='cornflowerblue')
-    plt.plot([0,1], [0,1], 'k--' )
-    plt.title('ROC curve for '+str(feat_title)+', ROC AUC : {:.4f}'.format(ROC_AUC))
-    plt.xlabel('False Positive Rate (1 - Specificity)')
-    plt.ylabel('True Positive Rate (Sensitivity)')
-    
-    
-    
-    #############################################
-    # Plot CMD of results
-    
-    # make custom cmap for binary pms training probs 
-    cmap = ListedColormap(['darkblue', 'crimson'])
-    bounds=[0,0.85,1]
-    norm = BoundaryNorm(bounds, cmap.N)    
-    # choosing what mags to plot & label
-    plot1 = 0
-    plot2 = 1
-    
-    ## plot
-    fig, [ax1,ax2] = plt.subplots(2,1,figsize=(6,8),sharex=True,sharey=True)
-    ax1.set_title('R136 with '+str(feat_title))
-    # plot training set
-    s1=ax1.scatter(X_train0[:, plot1]-X_train0[:,plot2], X_train0[:, plot1], 
-                   c=y_train, 
-                   norm=norm,
-                cmap=cmap,s=0.7)  
-    #ax1.set_title('R136 Training set')
-    ax1.set_ylabel(features[plot1][2::],fontsize=12)
-    ax1.text(0.05,0.9,'Training Set',
-             transform=ax1.transAxes,fontsize=12)
-        
-    #ax1.set_ylabel(features[plot1][2::]+' - '+features[plot2][2::])
-    fig.colorbar(s1,ax=ax1,label='P(PMS)')
-    # plot testing set
-    s2=ax2.scatter(X_test0[:, plot1]-X_test0[:, plot2], X_test0[:, plot1], 
-                   c=y_prob[:,1], 
-                cmap='RdYlBu_r',s=0.7)  
-    #ax2.set_title('R136 Testing set')
-    ax2.set_xlabel(features[plot1][2::]+' - '+features[plot2][2::],fontsize=12)
-    ax2.set_ylabel(features[plot1][2::],fontsize=12)
-    ax2.text(0.05,0.9,'Testing Set',
-             transform=ax2.transAxes,fontsize=12)
-    ax2.text(0.05,0.8,
-             'Accuracy: %.1f'%(100*metrics.accuracy_score(y_test, y_pred))+'%',
-             transform=ax2.transAxes)
-    ax2.invert_yaxis()
-    fig.colorbar(s2,ax=ax2,label='P(PMS)')
-    
-    fig.tight_layout()
         
     ########################################################################
     # Run SVM on entirety of 30Dor data
     
     # load and clean data
-    fullcatname=catalogdir+"HTTP.2015_10_20.1.astro"
-    cat_full=pickle.load(open(fullcatname+".pkl",'rb')).to_pandas()
+    #fullcatname=catalogdir+"HTTP.2015_10_20.1.astro"
+    #cat_full=pickle.load(open(fullcatname+".pkl",'rb')).to_pandas()
     
     #k2018_pms = pd.read_csv(catalogdir+'Ksoll2018_HTTP_PMS_catalogue.csv')
     #k2018_ums = pd.read_csv(catalogdir+'Ksoll2018_HTTP_UMS_selection.csv')
     #cat_full = pd.concat([k2018_pms,k2018_ums], axis=0, ignore_index=True)
     
-    full = copy.deepcopy(cat_full).reset_index(drop=False)
+    '''full = copy.deepcopy(cat_full).reset_index(drop=False)
     # drop any entries with missing mag estimates - revisit later to be less strict?
     full = full.dropna(how='any',subset=['m_f555w','m_f775u'])#,'m_f110w','m_f160w'])
     for m in ['m_f110w','m_f160w','m_f555w','m_f775u']:
         full.drop(full[full[m]>30].index,inplace=True) 
     for f in ['f_f555w','f_f775u']:
-        full.drop(full[full[f]>2].index,inplace=True)        
+        full.drop(full[full[f]>2].index,inplace=True)  ''' 
+        
+    # load dereddened HTTP catalog
+    full = pd.read_csv(catalogdir+'trim_HTTP.2015_10_20.1.csv')
     
-    # predict PMS probabilities
-    X_full = full[['m_f555w','m_f775u','m_f110w','m_f160w']].to_numpy()
+    if dered:
+        features2 = ['m_f555w_dered', 'm_f775u_dered', 'AvNN']#'m_f110w_dered', 'm_f160w_dered']
+        X_full = full[features2].to_numpy()
+
+    else:
+        X_full = full[['m_f555w','m_f775u','m_f110w','m_f160w']].to_numpy()
     
     if scale:
         #scaler = preprocessing.StandardScaler().fit(X)
@@ -361,6 +272,40 @@ if __name__ == '__main__':
         X_scale = X_full
     
     full_prob = clf.predict_proba(X_scale)
+    
+    
+    
+    ########################################################################
+    # Compare new SVM results to Ksoll2018 results
+    
+    from matplotlib.colors import DivergingNorm
+    
+    #cmap = LinearSegmentedColormap.from_list('seismic',['mediumblue','lightyellow','red'])
+    
+    norm = DivergingNorm(vmin=0, vcenter=0.5,vmax=1) #lsrk
+    
+    
+    fig,[ax2,ax1] = plt.subplots(1,2,figsize=(12,8),sharex=True,sharey=True)
+    
+    s1=ax1.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
+                cmap='RdYlBu_r',s=0.3)  
+    ax1.set_title('New SVM')
+    ax1.set_xlabel('F555W - F775W [mag]')
+    ax1.set_xlim(-1,3.5)
+    ax1.set_ylim(28,12)
+    ax1.set_ylabel('F555W [mag]')
+    fig.colorbar(s1,ax=ax1,label='P(PMS)')
+    
+    ax2.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c='#333399',s=0.1)  
+    s2 = ax2.scatter(pcolor0_dered,pmag0_dered,s=0.1,c=pms['p_svm'],
+                     cmap='RdYlBu_r',norm=norm)
+    ax2.set_title('Ksoll SVM')
+    fig.colorbar(s2,ax=ax2,label='P(PMS)')
+    fig.tight_layout()
+    ax2.set_ylabel('F555W [mag]')
+    ax2.set_xlabel('F555W - F775W [mag]')
+        
+    
     
     
     #########
@@ -396,8 +341,8 @@ if __name__ == '__main__':
     #fig.colorbar(s2,ax=ax2,label='P(PMS)')
     
     s3=ax3.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
-                cmap='RdYlBu_r',s=0.7)  
-    ax3.set_title('New SVM 30Dor')
+                cmap='RdYlBu_r',s=0.1)  
+    ax3.set_title('SVM on Dereddened 30Dor')
     ax3.set_xlabel('F555W - F775W [mag]')
     ax3.invert_yaxis()
     ax3.set_ylabel('F555W [mag]')
@@ -443,37 +388,7 @@ if __name__ == '__main__':
     fig.colorbar(s3,ax=ax3,label='P(PMS)')
     
     
-    
-    ########################################################################
-    # Compare new SVM results to Ksoll2018 results
-    
-    from matplotlib.colors import DivergingNorm
-    
-    cmap = LinearSegmentedColormap.from_list('seismic',['mediumblue','lightyellow','red'])
-    
-    norm = DivergingNorm(vmin=0, vcenter=0.5,vmax=1) #lsrk
-    
-    
-    fig,[ax2,ax1] = plt.subplots(1,2,figsize=(12,8),sharex=True,sharey=True)
-    
-    s1=ax1.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
-                cmap='RdYlBu_r',s=0.1)  
-    ax1.set_title('New SVM')
-    ax1.set_xlabel('F555W - F775W [mag]')
-    ax1.set_xlim(-1,3.5)
-    ax1.set_ylim(28,12)
-    ax1.set_ylabel('F555W [mag]')
-    fig.colorbar(s1,ax=ax1,label='P(PMS)')
-    
-    ax2.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c='#333399',s=0.1)  
-    s2 = ax2.scatter(pcolor0,pmag0,s=0.1,c=pms['p_svm'],
-                     cmap='RdYlBu_r',norm=norm)
-    ax2.set_title('Ksoll SVM')
-    fig.colorbar(s2,ax=ax2,label='P(PMS)')
-    fig.tight_layout()
-    ax2.set_ylabel('F555W [mag]')
-    ax2.set_xlabel('F555W - F775W [mag]')
-    
+
     
     
     ##### thnk working properly now
@@ -496,6 +411,139 @@ if __name__ == '__main__':
     plt.ylabel('New SVM P(PMS)')
     plt.title('Comparing new to Ksoll18 P(PMS)')
     
+    
+    
+    ######### 
+    # Calculate performance metrics
+    print()
+    print(classification_report(y_test, y_pred,
+                            target_names=['Non-PMS','PMS']))
+    # Model Accuracy: how often is the classifier correct?
+    print("Accuracy:",metrics.accuracy_score(y_test, y_pred))
+
+    # plot confusion matrix to see which labels
+    # likely to get confused
+    # e.g., how many "true" PMS stars labeled by SVM as Non-PMS
+    print(metrics.confusion_matrix(y_test,y_pred))
+    
+    mat = confusion_matrix(y_test, y_pred)
+    plt.figure()
+    sns.heatmap(mat.T, square=True, annot=True, fmt='d', cbar=False,
+                xticklabels=['Non-PMS','PMS'],
+                yticklabels=['Non-PMS','PMS'])
+    plt.xlabel('true label')
+    plt.ylabel('predicted label')
+    plt.title(str(feat_title))   
+    
+    
+    from sklearn.metrics import ConfusionMatrixDisplay
+    cm = confusion_matrix(y_test, y_pred,normalize='true')
+    
+    
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm,
+                                  display_labels=['Non-PMS','PMS'])  
+    fig, ax1 = plt.subplots(1,1)
+    disp.plot(cmap='Reds_r',ax=ax1,xticks_rotation='horizontal',include_values=True)
+    ax1.xaxis.tick_top()
+    ax1.xaxis.set_label_position('top')    #ax1.grid(False)
+    ax1.set_xlabel('Predicted Type',fontweight='bold')
+    ax1.set_ylabel('True Type',fontweight='bold')
+    ax1.set_title('Normalized Confusion Matrix')
+    
+    
+    # Model Precision: what fraction of predicted positive outcomes are correct?
+    # (ratio of true positives to total # of positives)
+    #print("Precision:",metrics.precision_score(y_test, y_pred))
+    
+    # Model Recall: what fraction of originally labeled PMS (true positives + false negatives)
+    # are correctly identified? (ratio of true positives to (true pos + false negative))
+    #print("Recall:",metrics.recall_score(y_test, y_pred))
+
+    # inspect support vectors
+    #clf.support_vectors_
+    # get indices of support vectors
+    #clf.support_
+    # get num of SVs for each class
+    #clf.n_support_
+    
+    ### plot ROC (receiver operating characteristic) curve
+    
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    
+    ### ROC AUC (area under curve) can compare classifier performances
+    # best possible score is 1, completely random classifier has ROC AUC = 0.5
+    # (percent of ROC plot underneath the curve)
+    ROC_AUC = roc_auc_score(y_test, y_pred)
+    print('ROC AUC : {:.4f}'.format(ROC_AUC))        
+    
+    plt.figure()
+    plt.plot(fpr, tpr, linewidth=2,c='cornflowerblue')
+    plt.plot([0,1], [0,1], 'k--' )
+    plt.title('ROC curve for '+str(feat_title)+', ROC AUC : {:.4f}'.format(ROC_AUC))
+    plt.xlabel('False Positive Rate (1 - Specificity)')
+    plt.ylabel('True Positive Rate (Sensitivity)')
+    
+    #############################
+    
+    from sklearn.inspection import permutation_importance
+    # this gives relative importance of features in THIS PARTICULAR MODEL
+    # - not intrinsticallly over all models!!! 
+        #https://scikit-learn.org/stable/modules/permutation_importance.html
+
+    perm_importance = permutation_importance(clf, X_test, y_test,n_repeats=30)
+    #sorted_idx = perm_importance.importances_mean.argsort()
+    
+    plt.figure()
+    plt.barh(features, perm_importance.importances_mean,facecolor='cornflowerblue')
+    plt.title("Relative Importance of Features in RBF SVM")  
+    plt.xlabel('Permutation Importance')
+    
+    
+
+    
+    
+    #############################################
+    # Plot CMD of results
+    
+    # make custom cmap for binary pms training probs 
+    cmap = ListedColormap(['darkblue', 'crimson'])
+    bounds=[0,0.9,1]
+    norm = BoundaryNorm(bounds, cmap.N)    
+    # choosing what mags to plot & label
+    plot1 = 0
+    plot2 = 1
+    
+    ## plot
+    fig, [ax1,ax2] = plt.subplots(2,1,figsize=(6,8),sharex=True,sharey=True)
+    ax1.set_title('R136 with '+str(feat_title))
+    # plot training set
+    s1=ax1.scatter(X_train0[:, plot1]-X_train0[:,plot2], X_train0[:, plot1], 
+                   c=y_train, 
+                   norm=norm,
+                cmap=cmap,s=0.7)  
+    #ax1.set_title('R136 Training set')
+    ax1.set_ylabel(features[plot1][2::],fontsize=12)
+    ax1.text(0.05,0.9,'Training Set',
+             transform=ax1.transAxes,fontsize=12)
+        
+    #ax1.set_ylabel(features[plot1][2::]+' - '+features[plot2][2::])
+    fig.colorbar(s1,ax=ax1,label='P(PMS)')
+    # plot testing set
+    s2=ax2.scatter(X_test0[:, plot1]-X_test0[:, plot2], X_test0[:, plot1], 
+                   c=y_prob[:,1], 
+                cmap='RdYlBu_r',s=0.7)  
+    #ax2.set_title('R136 Testing set')
+    ax2.set_xlabel(features[plot1][2::]+' - '+features[plot2][2::],fontsize=12)
+    ax2.set_ylabel(features[plot1][2::],fontsize=12)
+    ax2.text(0.05,0.9,'Testing Set',
+             transform=ax2.transAxes,fontsize=12)
+    ax2.text(0.05,0.8,
+             'Accuracy: %.1f'%(100*metrics.accuracy_score(y_test, y_pred))+'%',
+             transform=ax2.transAxes)
+    ax2.invert_yaxis()
+    fig.colorbar(s2,ax=ax2,label='P(PMS)')
+    
+    fig.tight_layout()
     
     
     

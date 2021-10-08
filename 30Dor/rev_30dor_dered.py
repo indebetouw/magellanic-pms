@@ -12,10 +12,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 if not os.path.abspath("../code") in sys.path:
     sys.path.append(os.path.abspath("../code"))
-from kNN_extinction_map import kNN_extinction
+from kNN_extinction_map import kNN_regr_Av #kNN_extinction, 
 
 # TODO something for combining WCS and ACS in 775
-
 
 #########
 # autoset catalog path based on user
@@ -38,6 +37,9 @@ if n<=0:
         fullcat=Table.read(fullcatname,format="ascii").to_pandas()
         pickle.dump(fullcat,open(fullcatname+".pkl",'wb'))
 
+fullcat = fullcat.reset_index(drop=False)
+fullcat = fullcat.rename(columns = {'index':'HTTP_index'})
+fullcat['ksoll_ID'] = fullcat['HTTP_index'] + 1
 
 ########################### region of interest
 
@@ -45,7 +47,7 @@ if n<=0:
 name0="clump72"
 ra0=84.736
 de0=-69.071
-rad0=10000 # 0.2/60
+rad0=100000 # 0.2/60
 
 # R136 as used by VK
 ra136 =84.67625
@@ -57,21 +59,6 @@ magname=['f555w']
 #colname=['f110w','f160w']  
 #magname=['f110w']
 
-########################## LOAD DATA
-try:
-    n=len(fullcat)
-except:
-    n=0
-if n<=0:
-    fullcatname=catalogdir+"HTTP.2015_10_20.1.astro"
-    if os.path.exists(fullcatname+".pkl"):
-        fullcat=pickle.load(open(fullcatname+".pkl",'rb')).to_pandas()
-    else:
-        fullcat=Table.read(fullcatname,format="ascii").to_pandas()
-        pickle.dump(fullcat,open(fullcatname+".pkl",'wb'))
-
-
-
 RA=fullcat['Ra'].values
 Dec=fullcat['Dec'].values
 
@@ -82,53 +69,77 @@ zz0=np.where((dx<rad0)*(dy<rad0))[0]
 d2=dx[zz0]**2+dy[zz0]**2
 
 z0=zz0[np.where( (d2<rad0**2)*
-                 (fullcat["m_"+colname[0]][zz0]<30)*
-                 (fullcat["m_"+colname[1]][zz0]<30)*
-                 (fullcat["m_"+magname[0]][zz0]<30)*
+                 (fullcat["m_f555w"][zz0]<30)*
+                 (fullcat["m_f775u"][zz0]<30)*
                  (fullcat['f_f555w']<=2)*
                  (fullcat['f_f775u']<=2))[0]]
 
 color0= ( fullcat["m_"+colname[0]] - fullcat["m_"+colname[1]] )[z0].values
 mag0  = fullcat["m_"+magname[0]][z0].values
 
-
-
+trim_cat = fullcat.iloc[z0].reset_index(drop=False)
 
 #----------------------------------------
 # now do the extinction correction
+
+color0_dered=color0.copy()
+mag0_dered=mag0.copy()
 
 ums=Table.read(catalogdir+"Ksoll2018_HTTP_UMS_selection.csv",format="ascii").to_pandas()
 URA = ums['Ra'].values
 UDec = ums['Dec'].values
 UAV = ums['A_v'].values
 
-nnear=20
-eps=10./3600           
-
 # de Marchi 2016 extinction law
 # https://academic.oup.com/mnras/article/455/4/4373/1264525
 R_BV = [4.48, 3.03, 1.83, 1.22] # at V,I,J,H
+#R_BV = [4.48, 3.74, 1.83, 1.22] # at V,R,J,H
+
 label = ['f555w','f775u', 'f110w', 'f160w']
 
+# weighting params for KNN from Ksoll 2018
+nnear=20
+eps=10./3600           
 
-color0_dered=color0.copy()
-mag0_dered=mag0.copy()
+# separate dfs into nx2 arrays for KNN
+# TO DO: improve how done for TCoords - takes forever since list
+UCoords = [[URA[i],UDec[i]] for i in range(len(URA))]
+TCoords = [[RA[z0][i],Dec[z0][i]] for i in range(len(RA[z0]))]
+#start = timer()
+av0 = kNN_regr_Av(UCoords,TCoords,UAV,eps,nnear,ncore=7)
+#end = timer()
+#print(end - start) # takes <1 second
+#from timeit import default_timer as timer
+#start = timer()
+#av0_old   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) \
+#                  for ri,di in zip(RA[z0],Dec[z0])])  
+#end = timer()
+#print(end - start) # takes 1 minute
+#pickle.dump(av0,open("HTTP_NN_avs.pkl",'wb'))
+#av0 = pickle.load(open("HTTP_NN_avs.pkl",'rb'))
 
-av0   = np.array([kNN_extinction(URA,UDec,UAV,eps,nnear,ri,di) \
-                  for ri,di in zip(RA[z0],Dec[z0])])   
-#pickle.dump(av0,open("nn_http_av.pkl",'wb'))
-#av0 = pickle.load(open("nn_http_av.pkl",'rb'))
 
+trim_cat['AvNN'] = av0
+trim_cat['m_f555w_dered'] = trim_cat['m_f555w'] - av0*R_BV[0]/R_BV[0]
+trim_cat['m_f775u_dered'] = trim_cat['m_f775u'] - av0*R_BV[1]/R_BV[0]
+trim_cat['m_f110w_dered'] = trim_cat['m_f110w'] - av0*R_BV[2]/R_BV[0]
+trim_cat['m_f160w_dered'] = trim_cat['m_f160w'] - av0*R_BV[3]/R_BV[0]
+
+#trim_cat.to_csv(catalogdir+'trim_HTTP.2015_10_20.1.csv')
+
+#### PRESERVING THE BELOW FOR SAKE OF HAVING SCRIPT RUN FOR PLOTTING
+# BUT LINE ABOVE IS WHAT'S USEFUL FOR BULK WORK
 for l,rbv in zip(label,R_BV):
-    print('l')
+    print(l,rbv)
+    #print('l')
     if l in colname[0]:
-        print(l)
+        #print(l)
         color0_dered = color0_dered - av0*rbv/R_BV[0]
     if l in colname[1]:
-        print(l)
+        #print(l)
         color0_dered = color0_dered + av0*rbv/R_BV[0]
     if l in magname[0]:
-        print(l)
+        #print(l)
         mag0_dered = mag0_dered - av0*rbv/R_BV[0]
     
 #----------------------------------------
@@ -208,10 +219,6 @@ for l,rbv in zip(label2,R_BV):
         pcolor0_dered = pcolor0_dered + PAV[pz0]*rbv/R_BV[0]
     if l in magname[0]:
         pmag0_dered = pmag0_dered - PAV[pz0]*rbv/R_BV[0]
-
-
-
-
         
 fig,[ax1,ax2] = plt.subplots(1,2,sharex=True,sharey=True)
 ax1.scatter(color0,mag0,s=0.05,alpha=0.2,color='k',label='HTTP')
