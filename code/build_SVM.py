@@ -80,7 +80,11 @@ if __name__ == '__main__':
     full = False
     extin = False
     dered = True
+    dered_full=False
+    simp=False
     
+    if simp:
+        features = ['m_f555w_dered','m_f775w_dered']
     if long:
         features = ['m_f775w','m_f110w','m_f160w']
     if full:
@@ -89,19 +93,19 @@ if __name__ == '__main__':
         features = ['m_f110w','m_f160w','A_v']
     if dered:
         features = ['m_f555w_dered','m_f775w_dered','A_v']#'m_f110w_dered','m_f160w_dered']#,'A_v']
+    if dered_full:
+        features = ['m_f555w_dered','m_f775w_dered','m_f110w_dered','m_f160w_dered']
     
     feat_title = [features[i][2::] for i in range(len(features))]
     ############# 
     # Load and clean training set 
     
     ########################## DE REDDEN 
-    nnear=20
-    eps=10./3600   
-    ums=Table.read(catalogdir+"Ksoll2018_HTTP_UMS_selection.csv",format="ascii").to_pandas()
-    URA = ums['Ra'].values
-    UDec = ums['Dec'].values
-    UAV = ums['A_v'].values    
-    UCoords = [[URA[i],UDec[i]] for i in range(len(URA))]
+    # de Marchi 2016 extinction law
+    # https://academic.oup.com/mnras/article/455/4/4373/1264525
+    R_BV = [4.48, 3.03, 1.83, 1.22] # at V,I,J,H
+    #R_BV = [4.48, 3.74, 1.83, 1.22] # at V,R,J,H
+    label = ['f555w','f775u', 'f110w', 'f160w']
     
     train_full = pd.read_csv(catalogdir+'Ksoll2018_training_set.csv')
     trCoords = [[train_full['Ra'].values[i],train_full['Dec'].values[i]] for i in range(len(train_full))]
@@ -120,10 +124,60 @@ if __name__ == '__main__':
     for m in ['m_f110w','m_f160w','m_f555w','m_f775w']:
         train.drop(train[train[m]>30].index,inplace=True)
     train = train.reset_index(drop=False)
-        
+    
+    #################
+    # plot comparison of training sets with/without p=0
+    '''
+    plot1 = 1
+    plot2 = 3
+    feat1 = features[plot1]
+    feat2 = features[plot2]    
+    
+    
+    fig,[ax1,ax2] = plt.subplots(1,2,sharex=True,sharey=True,figsize=(8,6))
+    norm = DivergingNorm(vmin=0, vcenter=0.5,vmax=1) 
+
+    s=ax1.scatter(train[feat1]-train[feat2],
+                  train[feat1],
+                c=train['pms_membership_prob'],
+                cmap='RdYlBu_r',s=0.5,norm=norm)
+    ax1.invert_yaxis()
+    ax1.set_xlabel(feat1+' - '+feat2)
+    ax1.set_ylabel(feat1)
+    ax1.set_xlim(-1.3,3.4)
+    #ax1.set_ylim(26.8,18.7)
+    fig.colorbar(s,label='P(PMS)')
+    ax1.set_title('All training entries with P=0')
+    fig.tight_layout()
+    
+    #########################3    
+    train.drop(train[train['pms_membership_prob']==0].index,inplace=True)
+    train=train.reset_index(drop=True)
+    ##################  
+
+    s2=ax2.scatter(train[feat1]-train[feat2],
+                  train[feat1],
+                c=train['pms_membership_prob'],
+                cmap='RdYlBu_r',s=0.5,norm=norm)
+    ax2.set_xlabel(feat1+' - '+feat2)
+    ax2.set_ylabel(feat1)
+    ax2.set_title('All training entries without P=0')
+    
     #pick_df = pickle.dump(train,open('trimmed_ksoll_training.p','wb')) 
     #train[['m_f555w', 'm_f775w', 'm_f110w', 'm_f160w', 'A_v',
     #       'pms_membership_prob']].to_csv('trimmed_ksoll_training.csv',index=False)
+    
+    
+    
+    train1 = copy.deepcopy(train)
+    train.drop(train[train['pms_membership_prob']==0].index,inplace=True)
+    train2=train.reset_index(drop=True)
+    
+    from glue import qglue
+    qglue(train0=train1,train_n0=train2)
+    '''
+    
+    
     
     ########### 
     # Replicate Fig 16 in Ksoll+ 2018 with entire training set
@@ -143,12 +197,16 @@ if __name__ == '__main__':
     ax1.set_title('R136 Training Set')
     fig.tight_layout()
     '''
+    
+    
+    
+    
     #plt.style.use('ggplot')
     ###########
     # Split into training & testing sets to make SVM
-    y = np.where(train['pms_membership_prob'].values >= 0.85, 1, 0)
+    y = np.where(train['pms_membership_prob'].values >= 0.9, 1, 0)
     
-    scale = True
+    scale = False
     
     if scale:
         
@@ -188,8 +246,8 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':[2.**n for n in np.linspace(4,13,10)],
-                  'gamma':[2.**n for n in np.linspace(-3,6,10)]}
+    param_grid = {'C':[2.**n for n in np.linspace(4,13,6)],
+                  'gamma':[2.**n for n in np.linspace(-3,6,6)]}
          
     '''
     - NOTE: n_jobs controls how many cores to use,
@@ -230,7 +288,46 @@ if __name__ == '__main__':
     y_pred = clf.predict(X_test)
     y_prob = clf.predict_proba(X_test)
     
-        
+    #######################3 plot decision regions
+
+    from mlxtend.plotting import plot_decision_regions
+    #scatter_kwargs = {'s':0.5}#,'alpha':0.7}
+    #plot_decision_regions(X_train,y_train,clf=clf)#,scatter_kwargs=scatter_kwargs)    
+    #plt.gca().invert_yaxis() 
+    
+    zero_inds, = np.where(train['pms_membership_prob'].values ==0)
+    
+    scatter_highlight_kwargs = {'s': 3.5, 'label': 'P(PMS)=0', 'alpha': 0.7}    
+    scatter_kwargs = {'s': 3, 'edgecolor': None, 'alpha': 0.4}
+    
+    # Plotting decision regions with more than 2 features
+    fig, axarr = plt.subplots(2, 2, figsize=(10,8), sharex=True, sharey=True)
+    values = [1,1.5,2,3]
+    width = 0.5
+    for value, ax in zip(values, axarr.flat):
+        plot_decision_regions(X, y, clf=clf,
+                              X_highlight=X[zero_inds],
+                              filler_feature_values={2: value},
+                              filler_feature_ranges={2: width},
+                              legend=2, ax=ax,scatter_highlight_kwargs=scatter_highlight_kwargs,
+                      scatter_kwargs=scatter_kwargs)
+        ax.set_xlabel(feat_title[0])
+        ax.set_ylabel(feat_title[1])
+        ax.set_title('$A_v$ = %.1f'%value+' $\pm$ %.1f'%width)
+    
+    # Adding axes annotations
+    #fig.suptitle('SVM on make_blobs')
+    plt.show()  
+    axarr[0][0].set_xlabel('')
+    axarr[0][1].set_xlabel('')
+    for i,j in [[0,0],[0,1],[1,0],[1,1]]:
+        print(i,j)
+        handles, labels = axarr[i][j].get_legend_handles_labels()
+        axarr[i][j].legend(handles, 
+                  ['Non-PMS','PMS','P(PMS)=0'], 
+                   framealpha=0.3, scatterpoints=1)
+
+    
     ########################################################################
     # Run SVM on entirety of 30Dor data
     
@@ -252,18 +349,24 @@ if __name__ == '__main__':
         
     # load dereddened HTTP catalog
     full = pd.read_csv(catalogdir+'trim_HTTP.2015_10_20.1.csv')
+    for m in ['m_f110w','m_f160w','m_f555w','m_f775u']:
+        full.drop(full[full[m]>30].index,inplace=True) 
     
     if dered:
         features2 = ['m_f555w_dered', 'm_f775u_dered', 'AvNN']#'m_f110w_dered', 'm_f160w_dered']
         X_full = full[features2].to_numpy()
-
+    
+    if dered_full:
+        features2 = ['m_f555w_dered', 'm_f775u_dered', 'm_f110w_dered', 'm_f160w_dered']#'m_f110w_dered', 'm_f160w_dered']
+        X_full = full[features2].to_numpy()
+        
     else:
         X_full = full[['m_f555w','m_f775u','m_f110w','m_f160w']].to_numpy()
     
     if scale:
         #scaler = preprocessing.StandardScaler().fit(X)
-        #scaler = preprocessing.MinMaxScaler().fit(X)  
-        scaler = preprocessing.RobustScaler().fit(X_full)
+        scaler = preprocessing.MinMaxScaler().fit(X)  
+        #scaler = preprocessing.RobustScaler().fit(X_full)
         #scaler = preprocessing.Normalizer().fit(X)
         X_scale = scaler.transform(X_full)        
         
@@ -297,10 +400,10 @@ if __name__ == '__main__':
     fig.colorbar(s1,ax=ax1,label='P(PMS)')
     
     ax2.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c='#333399',s=0.1)  
-    s2 = ax2.scatter(pcolor0_dered,pmag0_dered,s=0.1,c=pms['p_svm'],
-                     cmap='RdYlBu_r',norm=norm)
+    #s2 = ax2.scatter(pcolor0_dered,pmag0_dered,s=0.1,c=pms['p_svm'],
+    #                 cmap='RdYlBu_r',norm=norm)
     ax2.set_title('Ksoll SVM')
-    fig.colorbar(s2,ax=ax2,label='P(PMS)')
+    #fig.colorbar(s2,ax=ax2,label='P(PMS)')
     fig.tight_layout()
     ax2.set_ylabel('F555W [mag]')
     ax2.set_xlabel('F555W - F775W [mag]')
@@ -497,6 +600,8 @@ if __name__ == '__main__':
     plt.barh(features, perm_importance.importances_mean,facecolor='cornflowerblue')
     plt.title("Relative Importance of Features in RBF SVM")  
     plt.xlabel('Permutation Importance')
+    
+
     
     
 

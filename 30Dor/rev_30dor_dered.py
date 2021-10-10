@@ -94,7 +94,6 @@ UAV = ums['A_v'].values
 # https://academic.oup.com/mnras/article/455/4/4373/1264525
 R_BV = [4.48, 3.03, 1.83, 1.22] # at V,I,J,H
 #R_BV = [4.48, 3.74, 1.83, 1.22] # at V,R,J,H
-
 label = ['f555w','f775u', 'f110w', 'f160w']
 
 # weighting params for KNN from Ksoll 2018
