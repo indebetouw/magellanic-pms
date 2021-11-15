@@ -89,15 +89,15 @@ if __name__ == '__main__':
         
         X = train[features].to_numpy()
         #scaler = preprocessing.StandardScaler().fit(X)
-        scaler = preprocessing.MinMaxScaler().fit(X)  
+        scaler = preprocessing.MinMaxScaler()#.fit(X)  
         #scaler = preprocessing.RobustScaler().fit(X)
         #scaler = preprocessing.Normalizer().fit(X)
         
         X_train0, X_test0, y_train, y_test = train_test_split(X, y, 
                             test_size=0.3) # 70% training and 30% test
         
-        X_train = scaler.transform(X_train0)
-        X_test = scaler.transform(X_test0)
+        X_train = scaler.fit_transform(X_train0) #scaler.transform(X_train0)
+        X_test = scaler.transform(X_test0) # scaler.transform(X_test0)
         
         
     if not scale:
@@ -119,8 +119,8 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':[2.**n for n in np.linspace(4,13,6)],
-                  'gamma':[2.**n for n in np.linspace(-3,6,6)]}
+    param_grid = {'C':[2.**n for n in np.linspace(9,14,10)],
+                  'gamma':[2.**n for n in np.linspace(-3,6,8)]}
          
     '''
     - NOTE: n_jobs controls how many cores to use,
@@ -128,7 +128,7 @@ if __name__ == '__main__':
         can result in a "broken pipe" error
     - if encounter, just try running it again and it normally resolves itself
     '''     
-    strat = True
+    strat = False
     if strat:
         # create  K-fold with stratification training/test balanced
         # repeat to reduce variance
@@ -181,7 +181,7 @@ if __name__ == '__main__':
         
     if scale:
         #scaler = preprocessing.StandardScaler().fit(X)
-        scaler = preprocessing.MinMaxScaler().fit(X)  
+        #scaler = preprocessing.MinMaxScaler()#.fit(X)  
         #scaler = preprocessing.RobustScaler().fit(X_full)
         #scaler = preprocessing.Normalizer().fit(X)
         X_scale = scaler.transform(X_full)        
