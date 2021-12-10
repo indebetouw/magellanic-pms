@@ -119,21 +119,22 @@ if __name__ == '__main__':
     # instantiate SVM with default hyperparams and no prob. calc
     # to reduce comp time
     SM = svm.SVC(kernel='rbf')
-    param_grid = {'C':[2.**n for n in np.linspace(9,14,10)],
-                  'gamma':[2.**n for n in np.linspace(-3,6,8)]}
-         
+    param_grid = {'C':list(np.logspace(-0.5,0.5, 15))}
+        #'C':[2.**n for n in np.linspace(9,14,10)],
+        #          'gamma':[2.**n for n in np.linspace(-3,6,8)]}
+        # 
     '''
     - NOTE: n_jobs controls how many cores to use,
         most of the time works but has a known bug where sometimes
         can result in a "broken pipe" error
     - if encounter, just try running it again and it normally resolves itself
     '''     
-    strat = False
+    strat = True
     if strat:
         # create  K-fold with stratification training/test balanced
         # repeat to reduce variance
         cv = RepeatedStratifiedKFold(n_splits=3,n_repeats=3)         
-        grid = GridSearchCV(SM, param_grid, n_jobs=7, cv=cv,
+        grid = GridSearchCV(SM, param_grid, n_jobs=8, cv=cv,
                             refit=True,verbose=1) 
         
     if not strat:
@@ -153,7 +154,7 @@ if __name__ == '__main__':
     #print('\n\nEstimator that was chosen by the search :','\n\n', (grid.best_estimator_))
     
     ######### Run SVM using CVd hyperparams
-    clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'], gamma=grid.best_params_['gamma'])
+    clf = svm.SVC(kernel='rbf',probability=True,C=grid.best_params_['C'])#, gamma=grid.best_params_['gamma'])
     
     # Train the model using the training sets
     clf.fit(X_train, y_train)
@@ -216,7 +217,7 @@ if __name__ == '__main__':
     # of ksoll pms data - TO DO: fix this to work without having done that
 
     norm = DivergingNorm(vmin=0, vcenter=0.5,vmax=1) #lsrk
-     
+    '''
     fig,[ax2,ax1] = plt.subplots(1,2,figsize=(12,8),sharex=True,sharey=True)
     
     s1=ax1.scatter(X_full[:, 0]-X_full[:, 1], X_full[:, 0], c=full_prob[:,1], 
@@ -235,7 +236,7 @@ if __name__ == '__main__':
     #fig.colorbar(s2,ax=ax2,label='P(PMS)')
     fig.tight_layout()
     ax2.set_ylabel('F555W [mag]')
-    ax2.set_xlabel('F555W - F775W [mag]')
+    ax2.set_xlabel('F555W - F775W [mag]')'''
         
     
     
@@ -282,7 +283,7 @@ if __name__ == '__main__':
 
     fig.colorbar(s3,ax=ax3,label='P(PMS)')
     
-    
+    '''
     #########
     # Plot combined train + test vs results
     
@@ -361,7 +362,7 @@ if __name__ == '__main__':
     fig.colorbar(s2,ax=ax2,label='P(PMS)')
     
     fig.tight_layout()
-    
+    '''
     
     #################
     # plot comparison of training sets with/without p=0
