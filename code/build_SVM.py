@@ -25,6 +25,9 @@ build_SVM: Script to create, execute, and test results of a
 
 if __name__ == '__main__': 
     
+    
+    scale = True
+    
     # whether to include only longer wavelengths in training
     long = False
     full = False
@@ -78,8 +81,6 @@ if __name__ == '__main__':
     ###########
     # Split into training & testing sets to make SVM
     y = np.where(train['pms_membership_prob'].values >= 0.9, 1, 0)
-    
-    scale = True
     
     if scale:
         
@@ -177,7 +178,9 @@ if __name__ == '__main__':
     if 'm_f775w_dered' in features2:
         features2[features2.index('m_f775w_dered')] = 'm_f775u_dered'
     if 'm_f775w' in features2:
-        features2[features2.index('m_f775w')] = 'm_f775u'        
+        features2[features2.index('m_f775w')] = 'm_f775u'    
+    if dered == True:
+        features2[2] = 'AvNN'
     X_full = full[features2].to_numpy()
         
     if scale:
