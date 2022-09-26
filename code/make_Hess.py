@@ -40,13 +40,13 @@ def hess_bin(filt1=None, # first filter
     errs = np.sqrt(binned.statistic)
     
     # plot hess 
-    im = ax.imshow(np.log10(binned.statistic.T,extent=[xedges[0],xedges[-1],\
-               yedges[0],yedges[-1]],cmap=cm)
+    im = ax.imshow(np.log10(binned.statistic.T),extent=[xedges[0],xedges[-1],\
+               yedges[-1],yedges[0]],cmap=cm)
     # force fix aspect ratio of subplot, since gets wonky 
     # if x and y extents are unequal
     ax.set_aspect(1.0/ax.get_data_ratio(), adjustable='box')
         
-    fig.colorbar(im,label='Counts')
+    fig.colorbar(im,label='Log [Counts]')
     
     # return dictionary with relevant info
     hess_dict = {'counts':binned.statistic.T,

@@ -52,8 +52,8 @@ def twoD_kde(x, # x positions (e.g. RA)
     if discrete == False:
         # sigma contours
         cont_levs = np.arange(0.5*np.std(f),6*np.std(f),0.5*np.std(f))
-        im =ax.imshow(np.rot90(f), cmap='inferno', extent=[xmin, xmax, ymin, ymax])
-        ax.contour(xx, yy, f, cmap='Blues_r',linewidths=1,levels=cont_levs)#,label=lab)
+        im =ax.imshow((np.rot90(f)), cmap=cmr.ember, extent=[xmin, xmax, ymin, ymax])
+        #ax.contour(xx, yy, f, cmap='Blues_r',linewidths=1,levels=cont_levs)#,label=lab)
     #ax.clabel(cset, inline=1, fontsize=10)
     
     ax.set_xlim(xmax,xmin)
