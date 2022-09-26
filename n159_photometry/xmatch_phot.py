@@ -66,13 +66,10 @@ if filts == ['f555w', 'f814w']:
                            (c['f814w'][crd] <= 0.48) & (c['f814w'][shp] > -0.6))]
 
     ref_head = fits.open('/Users/toneill/N159/photometry/ref_files_WCS/n159s_f814w_drc_sci.chip0.fits')[0].header
-    ref_head['TARGNAME']
-
-    # ref_head_814 = fits.open('/Users/toneill/N159/photometry/ref_files_WCS/f814w_drc_sci.chip0.fits')[0].header
-    # ref_head_814['TARGNAME']
+    #ref_head['TARGNAME']
 
     ref_wcs = wcs.WCS(ref_head)
-    for p in [pass_160, pass_125]:
+    for p in [pass_555, pass_814]:
         xpix = p[x]
         ypix = p[y]
         ra, de = ref_wcs.wcs_pix2world(xpix, ypix, 0)
@@ -82,49 +79,145 @@ if filts == ['f555w', 'f814w']:
     from astropy.coordinates import SkyCoord
     from astropy import units as u
 
-    c160 = SkyCoord(ra=pass_160['ra'] * u.deg, dec=pass_160['dec'] * u.deg)
-    c125 = SkyCoord(ra=pass_125['ra'] * u.deg, dec=pass_125['dec'] * u.deg)
+    c555 = SkyCoord(ra=pass_555['ra'] * u.deg, dec=pass_555['dec'] * u.deg)
+    c814 = SkyCoord(ra=pass_814['ra'] * u.deg, dec=pass_814['dec'] * u.deg)
     max_sep = 0.2 * u.arcsec
-    idx, d2d, d3d = c125.match_to_catalog_sky(c160)
+    idx, d2d, d3d = c814.match_to_catalog_sky(c555)
     sep_constraint = d2d < max_sep
     print(np.sum(sep_constraint))
-    c125_matches = pass_125[sep_constraint]
-    c160_matches = pass_160[idx[sep_constraint]]
-    c125_cat = c125_matches[['ra', 'dec', x, y, mag, dmag, snr, shp, rnd, otype, crd]].to_pandas()
-    c125_cat.columns = [cname + '_125' for cname in
+    c814_matches = pass_814[sep_constraint]
+    c555_matches = pass_555[idx[sep_constraint]]
+    c814_cat = c814_matches[['ra', 'dec', x, y, mag, dmag, snr, shp, rnd, otype, crd]].to_pandas()
+    c814_cat.columns = [cname + '_814' for cname in
                         ['ra', 'dec', 'x', 'y', 'mag', 'dmag', 'snr', 'shp', 'rnd', 'otype', 'crd']]
-    c160_cat = c160_matches[['ra', 'dec', x, y, mag, dmag, snr, shp, rnd, otype, crd]].to_pandas()
-    c160_cat.columns = [cname + '_160' for cname in
+    c555_cat = c555_matches[['ra', 'dec', x, y, mag, dmag, snr, shp, rnd, otype, crd]].to_pandas()
+    c555_cat.columns = [cname + '_555' for cname in
                         ['ra', 'dec', 'x', 'y', 'mag', 'dmag', 'snr', 'shp', 'rnd', 'otype', 'crd']]
-    cmatch = c160_cat.join(c125_cat)
-    cmatch['125min160'] = cmatch['mag_125'] - cmatch['mag_160']
+    cmatch_vi = c555_cat.join(c814_cat)
+    cmatch_vi['555min814'] = cmatch_vi['mag_555'] - cmatch_vi['mag_814']
 
-    cmatch.to_csv('n159-w_xmatch125.160_f160ref.csv', index=False)
+    cmatch_vi.to_csv('n159-s_xmatch.555.814_f814ref.csv', index=False)
 
-    plt.figure()
-    plt.scatter(cmatch['125min160'], cmatch['mag_160'], s=1, alpha=0.9)
-    plt.gca().invert_yaxis()
-    plt.xlabel('F125 - F160 [mag]')
-    plt.ylabel('F125 [mag]')
-    plt.colorbar()
-    # plt.show()
-
-    xs = cmatch['125min160']
-    ys = cmatch['mag_160']
-
-    # here, selected to make life easier by having "square" bins)
-    xbins = np.arange(np.min(xs), np.max(xs), 0.1)
+    xs = cmatch_vi['555min814']
+    ys = cmatch_vi['mag_555']
     ybins = np.linspace(np.min(ys), np.max(ys), len(xbins))
-
     # create fig & plot
     fig = plt.figure()
     ax = fig.add_subplot(111)
     hdict = hess_bin(filt1=xs, filt2=ys,
                      xbins=xbins, ybins=ybins,
                      ax=ax, fig=fig, cm='viridis')
-    ax.set_xlabel('F125 - F160')
-    ax.set_ylabel('F160')
+    ax.set_xlabel('F555 - F814')
+    ax.set_ylabel('F555')
+    #plt.savefig('n159s_hess_555_814.png',dpi=300)
 
+    ###########################
+
+    rc_inds = (cmatch_vi['555min814'] <= 2.25) & (cmatch_vi['555min814'] >= 0.85) & \
+                 (cmatch_vi['mag_555'] <= 21.5) & (cmatch_vi['mag_555'] >= 19)
+    rc_df = cmatch_vi[rc_inds]
+
+    plt.figure()
+    plt.scatter(cmatch_vi['555min814'], cmatch_vi['mag_555'], s=2, alpha=0.8,c='royalblue')
+    plt.gca().invert_yaxis()
+    plt.xlabel('F555 - F814 [mag]')
+    plt.ylabel('F555 [mag]')
+    plt.title('red clump fitting area')
+    plt.xlim(0.75,2.25)
+    plt.ylim(21.5,19)
+    plt.scatter(rc_df['555min814'], rc_df['mag_555'], s=2, alpha=0.8,c='r')
+
+
+
+    from sklearn import linear_model
+
+    X = rc_df['555min814'].values.reshape(-1,1)
+    y = rc_df['mag_555'].values
+
+    def ransac_rc(X,y):
+
+        # Robustly fit linear model with RANSAC algorithm
+        ransac = linear_model.RANSACRegressor(max_trials=500)
+        ransac.fit(X, y)
+        inlier_mask = ransac.inlier_mask_
+        # outlier_mask = np.logical_not(inlier_mask)
+        # line_X = np.arange(X.min(), X.max())[:, np.newaxis]
+        # line_y_ransac = ransac.predict(line_X)
+        #### check fit slope
+        # Estimated coefficients
+        m, c = float(ransac.estimator_.coef_), float(ransac.estimator_.intercept_)
+        #print("\nm={:.3f}, c={:.3f}".format(m, c))
+
+        return [m, c,inlier_mask*1]
+
+    nrun = 5000
+    ran_mc = np.vstack([ransac_rc(X,y) for i in range(nrun)])
+    ran_m = ran_mc[:,0]
+    ran_c = ran_mc[:,1]
+    ran_in = ran_mc[:,2]
+    P_in = np.sum(ran_in,axis=0)/nrun
+
+    lw = 2
+
+    line_X = np.arange(X.min(), X.max(),0.05)#[:, np.newaxis]
+    line_Y = np.median(ran_m)*line_X + np.median(ran_c)
+
+    fig = plt.figure(figsize=(15,9))
+    ax = fig.add_subplot(121)
+    scats = ax.scatter(X,y,c=P_in,cmap=cmr.ember,s=6,marker='o',label='Red Clump Samples')
+    fig.colorbar(scats,ax=ax,label='P(inlier)')
+    '''plt.scatter(X[inlier_mask], y[inlier_mask], color="red", marker=".",\
+                label="Red Clump Inliers",s=4)
+    plt.scatter(X[outlier_mask], y[outlier_mask], color="gold", marker=".",\
+                label="Outliers",s=4)'''
+    #plt.plot(  line_X, line_y_ransac,   color="cornflowerblue",  linewidth=lw,
+    #    label="RANSAC regressor")
+    plt.plot(  line_X, line_Y,   color="cornflowerblue",  linewidth=lw,
+        label="RANSAC regressor")
+    plt.scatter(cmatch_vi['555min814'], cmatch_vi['mag_555'], s=1, alpha=1,c='grey',label='Full sample',zorder=0)
+    plt.legend(loc="lower left")
+    plt.xlabel('F555 - F814 [mag]')
+    plt.ylabel('F555 [mag]')
+    plt.gca().invert_yaxis()
+    plt.title('N159S RANSAC Regression: ')
+    plt.xlim(-0.1,3)
+    plt.ylim(22.5,19)
+
+    ax1 = fig.add_subplot(222)
+    ax1.hist(ran_m,bins=30,facecolor='crimson')
+    ax1.set_xlabel('Slope')
+    ax1.set_title('Slope estimates')
+    ax1.axvline(x=np.median(ran_m),c='cornflowerblue',lw=3,\
+                label='$R_{555W} =$  %.2f'%np.median(ran_m)+' $\pm$ %.2f'%np.std(ran_m))
+    ax1.legend()
+    ax2 = fig.add_subplot(224)
+    ax2.hist(ran_c,bins=30,facecolor='crimson')
+    ax2.axvline(x=np.median(ran_c),c='cornflowerblue',lw=3,
+                label='Intercept =  %.2f'%np.median(ran_c)+' $\pm$ %.2f'%np.std(ran_c))
+    ax2.legend(loc='upper right')
+    ax2.set_xlabel('Intercept')
+    ax2.set_title('Intercept estimates')
+
+    fig.tight_layout()
+
+    ##############
+
+    fig = plt.figure(figsize=(9,9))
+    ax = fig.add_subplot(111)
+    scats = ax.scatter(rc_df['ra_555'],rc_df['dec_555'],c=P_in,\
+                       cmap=cmr.ember,s=10,marker='s',label='Red Clump Samples')
+    plt.scatter(cmatch_vi['ra_555'],cmatch_vi['dec_555'], s=0.25, alpha=0.25,c='grey',label='Full sample',zorder=0)
+    fig.colorbar(scats,ax=ax,label='P(inlier)')
+    ax.legend()
+    plt.xlabel('RA')
+    plt.ylabel('Dec')
+    plt.title('N159S RANSAC for red clump')
+
+
+
+
+
+######################################################
 if filts == ["f125w", "f160w"]:
     pass_160 = c['f160w'][((c['f160w'][snr] >=10) & (c['f160w'][mag] < 90) & \
             (c['f160w'][crd]<=0.48) & (c['f160w'][shp]>-0.6))]
