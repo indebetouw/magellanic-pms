@@ -56,7 +56,7 @@ def hess_bin(filt1=None, # first filter
             
     return hess_dict
 
-if __name__ == '__main__': 
+'''if __name__ == '__main__': 
     
     ##### example use case
     xs = np.random.normal(0,1,size=1000)
@@ -75,5 +75,5 @@ if __name__ == '__main__':
              ax=ax,fig=fig)
 
 
-
+'''
 
