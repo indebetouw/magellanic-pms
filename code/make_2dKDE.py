@@ -22,7 +22,7 @@ def twoD_kde(x, # x positions (e.g. RA)
              y, # y positions (e.g. Dec)
              ax=None, # mpl subplot to use
              fig=None, # mpl figure to use
-             discrete=False): # plot continous kde if False, plot non-cont if True
+             discrete=False,cmap_kde=cmr.flamingo_r): # plot continous kde if False, plot non-cont if True
 
     # Define cell size & extent of intial kde build
     deltaX = (max(x) - min(x))/10
@@ -52,7 +52,7 @@ def twoD_kde(x, # x positions (e.g. RA)
     if discrete == False:
         # sigma contours
         cont_levs = np.arange(0.5*np.std(f),6*np.std(f),0.5*np.std(f))
-        im =ax.imshow((np.rot90(f)), cmap=cmr.ember, extent=[xmin, xmax, ymin, ymax])
+        im =ax.imshow((np.rot90(f)), cmap=cmap_kde, extent=[xmin, xmax, ymin, ymax],zorder=0)
         #ax.contour(xx, yy, f, cmap='Blues_r',linewidths=1,levels=cont_levs)#,label=lab)
     #ax.clabel(cset, inline=1, fontsize=10)
     

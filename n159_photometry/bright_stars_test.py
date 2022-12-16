@@ -1,57 +1,12 @@
 
-import matplotlib.pyplot as plt
-import numpy as np
-from astropy.io import fits
-import pandas as pd
-import vaex as vx
-import os
-from astropy.table import Table
-from astropy.wcs import wcs
-import subprocess
-
-photdir = '/Users/toneill/N159/photometry/'
-
-f814_cols = pd.read_csv(photdir+'n159s.phot0/f814w/n159s_f814w_f814ref.columns',sep='\\',header=None)[0]
-
-region = "n159s"
-filts = ["f555w", "f814w"]
-filts = ["f125w", "f160w"]
-
-workdir = photdir+'n159s.phot0/'
 
 
-#os.chdir(workdir + region + "/")
 
-c = {}
-for filt in filts:
-    if filt == "f125w" or filt == "f160w":
-        kind = "flt"
-        camera = "wfc3"
-        catfile = filt + "/" + region + "_" + filt + "_f160ref"
-    else:
-        # this is of course particular to this project that we did UVO with ACS and IR with WFC3
-        kind = "flc"
-        camera = "acs"
-        catfile = filt + "/" + region + "_" + filt + "_f814ref"
 
-    print(catfile)
-    c[filt] = Table.read(workdir+catfile, format="ascii")
-    print(len(c[filt]))
-    print(c[filt][0:5])
 
-# column definitions
-mag = 'col16'
-dmag= 'col18'
-snr = 'col6'
-shp = 'col7'
-rnd = 'col8'
-x   = 'col3'
-y   = 'col4'
-otype = 'col11'
-crd = 'col10'
 
-ref_head = fits.open(photdir+'/n159s.phot0/f814w/n159s_f814w_f814ref.1.res.fits')[0].header
-ref_wcs = wcs.WCS(ref_head)
+
+
 
 '''
 RA_TARG =   8.501666666667E+01 / right ascension of the target (deg) (J2000)    
@@ -107,7 +62,24 @@ for filt in filts:
     c[filt+"_de"]=de
     print(ra[0:10],de[0:10])
 
+hst_phot = pd.read_csv(photdir+'HSC-9_19_2022.csv')
 
+h_555 = hst_phot['A_F555W'].values
+h_814 = hst_phot['A_F814W'].values
+
+plt.figure()
+plt.gca().invert_yaxis()
+plt.scatter(h_555-h_814,h_814,s=0.25,alpha=0.5,c='royalblue')
+plt.xlabel('V - I')
+plt.ylabel('I')
+plt.show()
+
+
+plt.figure()
+plt.scatter(hst_phot['MatchRA'],hst_phot['MatchDec'],s=0.25,alpha=0.5,c='royalblue')
+plt.xlabel('RA')
+plt.ylabel('Dec')
+plt.show()
 
 
 

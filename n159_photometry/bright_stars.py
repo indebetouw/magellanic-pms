@@ -16,7 +16,7 @@ photdir = '/Users/toneill/N159/photometry/'
 
 
 #zarhar = Table.read(photdir+'zar10arcmin.fit',format='ascii')
-zar =  fits.open(photdir+'zar10arcmin.fit')[1].data
+zar =  fits.open(photdir+'old/zar10arcmin.fit')[1].data
 zar = zar[zar['Imag'] > 0]
 
 z_ra = zar['RAJ2000']
@@ -30,8 +30,17 @@ plt.scatter(z_vmini,z_v,s=0.5,alpha=0.4,c='k')#c=zar['Flag'],cmap='tab20c')#'roy
 plt.gca().invert_yaxis()
 #plt.colorbar()
 
-cmatch_vi = pd.read_csv(photdir+'n159-s_xmatch_0.1sec.555.814_f814ref.csv')
-saturated = pd.read_csv(photdir + 'n159-s_xmatch_0.1sec_Saturated.555.814_f814ref.csv')
+cmatch_vi = all_vi#pd.read_csv(photdir+'n159-s_xmatch_0.1sec.555.814_f814ref.csv')
+#saturated = pd.read_csv(photdir + 'n159-s_xmatch_0.1sec_Saturated.555.814_f814ref.csv')
+
+plt.figure()
+plt.scatter(z_vmini,z_v,s=0.5,alpha=0.4,c='k')#c=zar['Flag'],cmap='tab20c')#'royalblue')#,c=z_i)
+plt.scatter(cmatch_vi['555min814'],cmatch_vi['mag_555'],s=0.2,alpha=0.4,c='r')#c=zar['Flag'],cmap='tab20c')#'royalblue')#,c=z_i)
+plt.gca().invert_yaxis()
+#plt.colorbar()
+
+
+
 
 csat = SkyCoord(ra=saturated['ra_555'] * u.deg, dec=saturated['dec_555'] * u.deg)
 czar = SkyCoord(ra=z_ra* u.deg, dec=z_dec* u.deg)
@@ -59,7 +68,7 @@ plt.ylim(23,10)
 
 cfull = SkyCoord(ra=cmatch_vi['ra_555'] * u.deg, dec=cmatch_vi['dec_555'] * u.deg)
 czar = SkyCoord(ra=z_ra* u.deg, dec=z_dec* u.deg)
-max_sep = 0.2 * u.arcsec
+max_sep = 0.2* u.arcsec
 idx, d2d, d3d = cfull.match_to_catalog_sky(czar)
 sep_constraint = d2d < max_sep
 print(np.sum(sep_constraint))
@@ -69,7 +78,7 @@ hz_mat_full = czar_matches.join(cfull_matches)
 hz_mat_full['Z_VminI'] = hz_mat_full['Vmag'] - hz_mat_full['Imag']
 
 plt.figure()
-plt.scatter(hz_mat_full['Z_VminI'], hz_mat_full['Vmag'], s=5, alpha=1,c='b',label='Z&H with non-saturated HST match (N159S ONLY!)')
+plt.scatter(hz_mat_full['Z_VminI'], hz_mat_full['Vmag'], s=5, alpha=1,c='b',label='Z&H with non-saturated HST match')# (N159S ONLY!)')
 plt.scatter(zar['Vmag']-zar['Imag'], zar['Vmag'], s=0.3, alpha=0.4,c='grey',label='Full Z&H',zorder=0)
 plt.gca().invert_yaxis()
 plt.xlabel('V - I [mag]')

@@ -10,16 +10,14 @@ from astropy.wcs import wcs
 import subprocess
 import cmasher as cmr
 
-photdir = '/Users/toneill/N159/photometry/'
-region = "n159s"
-workdir = photdir+region+'.phot0/'
+photdir = '/Users/toneill/N159/photometry/new/'
+region = "n159-e"
+region_shortname = 'n159e'
+#workdir = photdir+region+'/'+'n159-e-newoptical/'##.phot0/'
+workdir = '/Users/toneill/N159/photometry/new/n159-e/n159-e-newoptical/'
 
 filts = ["f555w", "f814w"]
 #filts = ["f125w", "f160w"]
-
-#f814_cols = pd.read_csv(photdir+'n159s.phot0/f814w/n159s_f814w_f814ref.columns',sep='\\',header=None)[0]
-
-
 #os.chdir(workdir + region + "/")
 
 c = {}
@@ -28,14 +26,13 @@ for filt in filts:
         #kind = "flt"
         #camera = "wfc3"
         #catfile = filt + "/" + region + "_" + filt + "_f160ref"
-        catfile = photdir+'n159-w_'+filt+'_f160ref'
+        catdir = photdir+region+'/'+filt+'/'
+        catfile = catdir +region+filt+ '_f160ref'
     else:
-        # this is of course particular to this project that we did UVO with ACS and IR with WFC3
-        kind = "flc"
-        camera = "acs"
-        catfile = workdir+filt + "/" + region + "_" + filt + "_f814ref"
+        catdir = photdir+region+'/'+filt+'/'
+        catfile = catdir +region+'_'+filt+ '_f814ref'
 
-    print(catfile)
+    #print(catfile)
     c[filt] = Table.read(catfile, format="ascii")
     print(len(c[filt]))
     print(c[filt][0:5])
@@ -54,7 +51,11 @@ sky='col13'
 cts='col12'
 
 if filts == ['f555w', 'f814w']:
+    os.chdir(workdir)
 
+    #ref_head = fits.open('/Users/toneill/N159/photometry/ref_files_WCS/'+region_shortname+'_f814w_drc_sci.chip0.fits')[0].header
+    reffile = filt + "/" + subprocess.getoutput( 'grep img_file ' + filt + '/dolparms_' + filt + ".multi.txt").split()[-1] + ".fits"
+    ref_head = fits.open(reffile)[0].header
     # saturated detections:
     cat = c['f555w']
     satur_555 = np.zeros(len(cat))
@@ -75,7 +76,10 @@ if filts == ['f555w', 'f814w']:
                 satur_814[i] += 1
     cat['satur'] = satur_814
 
-    detec_satur = True
+    from astropy.coordinates import SkyCoord
+    from astropy import units as u
+
+    detec_satur = False
     if detec_satur:
         ref_wcs = wcs.WCS(ref_head)
         for p in [c['f555w'], c['f814w']]:
@@ -104,7 +108,7 @@ if filts == ['f555w', 'f814w']:
         satur_cmatch_vi['555min814'] = satur_cmatch_vi['mag_555'] - satur_cmatch_vi['mag_814']
         sat_either_bool = (satur_cmatch_vi['satur_555'] + satur_cmatch_vi['satur_814']) > 0
         satur_cmatch_vi = satur_cmatch_vi[sat_either_bool]
-        satur_cmatch_vi.to_csv(photdir+'n159-s_xmatch_0.1sec_Saturated.555.814_f814ref.csv', index=False)
+        satur_cmatch_vi.to_csv(photdir+region+'_xmatch_0.1sec.555.814_f814ref_satur.csv', index=False)
 
 
 
@@ -118,23 +122,52 @@ if filts == ['f555w', 'f814w']:
     pass_814 = c['f814w'][ (c['f814w'][shp] < 0.27)   & (c['f814w'][dmag] < 0.1 ) &
                            (c['f814w'][crd] < 1) & ctssky_814 & (c['f814w'][mag] < 25)]
 
-    ref_head = fits.open('/Users/toneill/N159/photometry/ref_files_WCS/n159s_f814w_drc_sci.chip0.fits')[0].header
-    #ref_head['TARGNAME']
-
     ref_wcs = wcs.WCS(ref_head)
-    for p in [pass_555, pass_814]:
+    for i in range(2):
+        p = [pass_555, pass_814][i]
         xpix = p[x]
         ypix = p[y]
         ra, de = ref_wcs.wcs_pix2world(xpix, ypix, 0)
         p["ra"] = ra
         p["dec"] = de
 
+   '''   ref_wcs = wcs.WCS(ref_head)
+        for p in [c['f555w'], c['f814w']]:
+            xpix = p[x]
+            ypix = p[y]
+            ra, de = ref_wcs.wcs_pix2world(xpix, ypix, 0)
+            p["ra"] = ra
+            p["dec"] = de'''
+
     from astropy.coordinates import SkyCoord
     from astropy import units as u
 
-    c555 = SkyCoord(ra=pass_555['ra'] * u.deg, dec=pass_555['dec'] * u.deg)
+
+    pd_555 = pass_555.to_pandas()#.to_csv(photdir+region+'_555only_f814ref.csv', index=False)
+    pd_814 = pass_814.to_pandas()#.to_csv(photdir+region+'_814only_f814ref.csv', index=False)
+
+
+    '''zsky5 =  c['f555w'][sky]== 0
+    zsky8 = c['f814w'][sky]==0
+
+    plt.figure()
+    plt.scatter(c['f555w']['ra'][zsky5],c['f555w']['dec'][zsky5],s=1,marker='x',c='r')#c['f555w'][sky])
+    plt.title('f555w sky = 0, n159e')
+
+    plt.figure()
+    plt.scatter(c['f814w']['ra'],c['f814w']['dec'],s=1,marker='x',c=c['f814w'][sky],zorder=0)
+    plt.scatter(c['f814w']['ra'][zsky8],c['f814w']['dec'][zsky8],s=1,marker='x',c='r')#c['f555w'][sky])
+    plt.title('f814w sky = 0, n159e')
+    plt.colorbar(label='sky')'''
+
+    if region_shortname == 'n159w':
+        c555_orig = SkyCoord(ra=pass_555['ra'] * u.deg, dec=pass_555['dec'] * u.deg)
+        c555 = c555_orig.spherical_offsets_by(np.repeat(mean_ra_off,len(c555_orig))*u.arcsec,
+                                              np.repeat(mean_dec_off,len(c555_orig))*u.arcsec)
+    if region_shortname != 'n159w':
+        c555 = SkyCoord(ra=pass_555['ra'] * u.deg, dec=pass_555['dec'] * u.deg)
     c814 = SkyCoord(ra=pass_814['ra'] * u.deg, dec=pass_814['dec'] * u.deg)
-    max_sep = 0.1 * u.arcsec
+    max_sep = 0.2 * u.arcsec
     idx, d2d, d3d = c814.match_to_catalog_sky(c555)
     sep_constraint = d2d < max_sep
     print(np.sum(sep_constraint))
@@ -149,7 +182,11 @@ if filts == ['f555w', 'f814w']:
     cmatch_vi = c555_cat.join(c814_cat)
     cmatch_vi['555min814'] = cmatch_vi['mag_555'] - cmatch_vi['mag_814']
 
-    cmatch_vi.to_csv(photdir+'n159-s_xmatch_0.1sec.555.814_f814ref.csv', index=False)
+    cmatch_vi.to_csv(photdir+region+'new_new_xmatch_0.2sec.555.814_f814ref.csv', index=False)
+
+
+
+
 
     xs = cmatch_vi['555min814']
     ys = cmatch_vi['mag_555']
@@ -179,9 +216,17 @@ if filts == ['f555w', 'f814w']:
 
     xs = cmatch_vi['555min814']
     ys = cmatch_vi['mag_555']
+    '''
+    ## for n159s
     d_rcline = (xs-0.3)*(22.7-19) - (ys-19)*(1.75-0.3)
     line_side = d_rcline >= 0
     rc_inds = (ys <= 23) & (ys >= 19) & line_side & (xs <= 2.75) & (xs >= 0.75)
+    '''
+    d_rcline = (xs-0.9)*(24-20.2) - (ys-20.2)*(2.5-0.9)
+    line_side = d_rcline >= 0
+    rc_inds = (ys <= 22.5) & (ys >= 19) & line_side & (xs <= 2.75) & (xs >= 1)
+
+
     rc_df = cmatch_vi[rc_inds]
     #rc_inds = (cmatch_vi['555min814'] <= 2.25) & (cmatch_vi['555min814'] >= 0.75) & \
     #            (cmatch_vi['mag_555'] <= 20.5) & (cmatch_vi['mag_555'] >= 19)
@@ -190,12 +235,14 @@ if filts == ['f555w', 'f814w']:
     plt.figure()
     plt.scatter(rc_df['555min814'], rc_df['mag_555'], s=2, alpha=1,c='r')
     plt.scatter(cmatch_vi['555min814'], cmatch_vi['mag_555'],
-                s=2, alpha=0.8,c=line_side,zorder=0)
+                s=2, alpha=0.8,c=line_side,zorder=1)
     plt.gca().invert_yaxis()
     plt.xlabel('F555 - F814 [mag]')
     plt.ylabel('F555 [mag]')
     plt.title('red clump fitting area')
-    plt.plot([0.4, 1.85], [19, 22.7],c='r')
+    #plt.plot([0.4, 1.85], [19, 22.7],c='r')
+    plt.plot([0.9-1,2.5-1],[18.7-0.5,22.5-0.5],c='r')
+    plt.plot([])
     plt.axhline(y=19,c='k')
     plt.axhline(y=22.5,c='k')
 
@@ -223,7 +270,7 @@ if filts == ['f555w', 'f814w']:
     X = rc_df['555min814'].values.reshape(-1,1)
     y = rc_df['mag_555'].values
 
-    nrun = 2000
+    nrun = 500
     ran_mc = np.vstack([ransac_rc(X,y) for i in range(nrun)])
     ran_m = ran_mc[:,0]
     ran_c = ran_mc[:,1]
@@ -231,12 +278,15 @@ if filts == ['f555w', 'f814w']:
     P_in = np.sum(ran_in,axis=0)/nrun
 
     lw = 2
-    line_X = np.arange(X.min(), X.max(),0.05)#[:, np.newaxis]
+    line_X = np.arange(X.min(), X.max()-0.5,0.05)#[:, np.newaxis]
     line_Y = np.median(ran_m)*line_X + np.median(ran_c)
+
+    rc_pcheck = P_in >= 0.95
 
     fig = plt.figure(figsize=(15,7))
     ax = fig.add_subplot(121)
     scats = ax.scatter(X,y,c=P_in,cmap=cmr.ember,s=6,marker='o',label='Red Clump Samples')
+    #scats = ax.scatter(X[rc_pcheck],y[rc_pcheck],c='r',s=6,marker='o',label='Red Clump Samples')
     fig.colorbar(scats,ax=ax,label='P(inlier)')
     plt.plot(  line_X, line_Y,   color="cornflowerblue",  linewidth=lw, label="RANSAC regressor")
     plt.scatter(cmatch_vi['555min814'], cmatch_vi['mag_555'], s=1, alpha=1,c='grey',label='Full sample',zorder=0)
@@ -244,7 +294,7 @@ if filts == ['f555w', 'f814w']:
     plt.xlabel('F555 - F814 [mag]')
     plt.ylabel('F555 [mag]')
     plt.gca().invert_yaxis()
-    plt.title('N159S RANSAC Regression: ')
+    plt.title('N159w RANSAC Regression: ')
     #plt.xlim(-0.1,3)
     #plt.ylim(22.5,19)
 
