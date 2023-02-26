@@ -56,7 +56,37 @@ ax.tick_params(direction='in', which='both', labelsize=12)
 plt.gca().set_xscale('log')
 plt.tight_layout()
 
-plt.savefig('hst_bands.png',dpi=300)
+#plt.savefig('hst_bands.png',dpi=300)
+
+
+##################################################
+
+havecol = 'gray'
+wantcol = 'r'
+
+plt.figure(figsize=(10,8))
+ax = plt.subplot(111)
+
+plt.fill_between(f555['col1'],np.repeat(0,len(f555)),f555['col2'],**fillprops,color=havecol,label='Have in Existing Training Set')
+plt.fill_between(f775['col1'],np.repeat(0,len(f775)),f775['col2'],alpha=0.3,color=havecol,zorder=4)
+plt.fill_between(f110['col1'],np.repeat(0,len(f110)),f110['col2'],alpha=0.3,color=havecol,zorder=2)
+plt.fill_between(f160['col1'],np.repeat(0,len(f160)),f160['col2'],**fillprops,color=havecol)
+
+
+plt.plot(f555['col1'],f555['col2'],**lprops,color=wantcol,label='Desired for Training Set')
+plt.plot(f814['col1'],f814['col2'],color=wantcol,zorder=3,**lprops)
+plt.plot(f125['col1'],f125['col2'],color=wantcol,zorder=0,**lprops)
+plt.plot(f160['col1'],f160['col2'],zorder=1,color=wantcol,**lprops)
+
+plt.legend(loc='upper left',fontsize=16)
+plt.ylim(0,0.65)
+plt.xlabel('$\\lambda$ ($\\AA$)',fontsize=20)
+plt.ylabel('Transmission',fontsize=20)
+ax.xaxis.set_ticks_position('both')
+ax.yaxis.set_ticks_position('both')
+ax.tick_params(direction='in', which='both', labelsize=12)
+#plt.gca().set_xscale('log')
+plt.tight_layout()
 
 
 

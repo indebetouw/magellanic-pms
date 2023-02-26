@@ -1,0 +1,101 @@
+---
+title: "transform hst filters"
+author: "Theo O'Neill"
+fontsize: 12pt
+geometry: margin=1in
+urlcolor: black
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE,fig.width=10,fig.height=6)
+
+```
+
+```{r}
+# Load data
+#data<-read.table("/Users/toneill/N159/isochrones/hstwfcwide.csv", header=TRUE ,sep=",")
+data<-read.table("/Users/toneill/N159/isochrones/artpop_df.csv",sep=",",header=TRUE)
+attach(data)
+head(data)
+```
+
+```{r}
+# fit model
+#result1<-lm(F814Wmag~ F775Wmag + F110Wmag + F160Wmag)# + F555Wmag)
+#summary(result1)
+#result2<-lm(F125Wmag~ F160Wmag + F110Wmag + F775Wmag)
+#summary(result2)
+result<-lm(cbind(F125Wmag,F814Wmag)~ F775Wmag  + F110Wmag+ F160Wmag + F555Wmag)
+summary(result)
+```
+```{r}
+library(car)
+vif(result1)
+vif(result2)
+```
+
+
+```{r}
+res.man <- manova(result)
+summary.aov(res.man)
+```
+
+```{r}
+library(MASS)
+
+full.model <- lm(F814Wmag~F775Wmag + F160Wmag + F110Wmag + F555Wmag)
+step.model <- stepAIC(full.model, direction = "both",  trace = TRUE)
+summary(step.model)
+
+```
+
+
+```{r}
+start125<-lm(F814Wmag~1)#, data=data)
+end125<-lm(F814Wmag~F775Wmag + F160Wmag + F110Wmag + F555Wmag)
+result125.f<-step(start125, scope=list(lower=start125,
+upper=end125), direction="forward")
+summary(result125.f)
+```
+
+```{r}
+result125.b<-step(end125, direction="backward")
+summary(result125.b)
+```
+
+
+
+```{r}
+# make pairs plot
+pairs(F125Wmag~ F814Wmag + F775Wmag + F160Wmag + F110Wmag + F555Wmag, 
+      upper.panel = NULL,pch=1)
+```
+
+
+```{r}
+library(corrplot)
+# make corr plot
+vcor <- cor(data[c('F555Wmag','F775Wmag','F814Wmag','F110Wmag','F125Wmag','F160Wmag')])
+corrplot(vcor, method = "shade", shade.col = NA, tl.col = "black", tl.srt = 45,
+         addCoef.col = "darkgrey", cl.pos = "n",type="lower")
+```
+
+
+
+```{r}
+plot(result$fitted.values[,2],result$residuals[,2],xlab="Fitted Values",ylab='Residuals',main="residual plot")
+abline(h=0,col="red")
+
+qqnorm(result$residuals[,2])
+qqline(result$residuals[,2], col="red")
+```
+
+
+
+
+
+
+
+
+

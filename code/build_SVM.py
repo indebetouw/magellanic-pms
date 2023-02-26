@@ -59,8 +59,9 @@ if __name__ == '__main__':
     R_BV = [4.48, 3.03, 1.83, 1.22] # at V,I,J,H
     #R_BV = [4.48, 3.74, 1.83, 1.22] # at V,R,J,H
     label = ['f555w','f775u', 'f110w', 'f160w']
-    
+
     train_full = pd.read_csv(catalogdir+'Ksoll2018_training_set.csv')
+
     trCoords = [[train_full['Ra'].values[i],train_full['Dec'].values[i]] for i in range(len(train_full))]
     tr_av0 = train_full['A_v']
     #train_full['AvNN'] = tr_av0
