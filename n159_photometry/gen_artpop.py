@@ -10,11 +10,20 @@ filts_use = ['WFC3_UVIS_F555W','WFC3_UVIS_F775W',
              'WFC3_UVIS_F814W','WFC3_IR_F110W',
              'WFC3_IR_F125W','WFC3_IR_F160W']
 
-popprops = {'feh':-0.30, 'phot_system':'HST_WFC3',
-            'imf':'kroupa','distance':50*u.kpc,
-            'num_stars':1e4,'mag_limit':27,'mag_limit_band':'WFC3_UVIS_F555W'}#,'a_lam':0.3}
+if fit_trans:
+    popprops = {'feh':-0.30, 'phot_system':'HST_WFC3',
+                'imf':'kroupa','distance':50*u.kpc,
+                'num_stars':1e4,'mag_limit':27,'mag_limit_band':'WFC3_UVIS_F555W'}#,'a_lam':0.3}
 
-age_range = np.logspace(np.log10(5e5),7,10)
+    age_range = np.logspace(np.log10(5e5),7,10)
+
+if gen_train:
+    popprops = {'feh': -0.30, 'phot_system': 'HST_WFC3',
+                'imf': 'kroupa', 'distance': 50 * u.kpc,
+                'num_stars': 1e4, 'mag_limit': 27, 'mag_limit_band': 'WFC3_UVIS_F555W'}  # ,'a_lam':0.3}
+
+    age_range = np.logspace(np.log10(5e5), 10, 15)
+
 #age_range = np.append(age_range,10**8)
 
 ssp = artpop.MISTSSP( log_age = np.log10(age_range[0]),  **popprops)
@@ -41,7 +50,7 @@ col_57 = m555 - m775
 col_58 = m555 - m814
 
 mu = 0
-sigma = 0.15
+sigma = 0.1
 mag5 = add_noise(m555,mu=mu,sigma=sigma)
 mag7 = add_noise(m775,mu=mu,sigma=sigma)
 mag8 = add_noise(m814,mu=mu,sigma=sigma)
@@ -52,46 +61,53 @@ mag6 = add_noise(m160,mu=mu,sigma=sigma)
 c_57 = mag5 - mag7
 c_58 = mag5 - mag8
 
-#agegroup = ssp.ssp_labels
-#age_range
-#agedict = [{i+1:np.round(age_range[i])} for i in range(len(age_range))]
-#agedict
-#ages = agedict[agegroup]
-#[agedict[agegroup[i]] for i in range(len(agegroup))]
-
-
 popdf = pd.DataFrame({'phase':phases,'agegroup':ssp.ssp_labels,
-                      'F555Wmag':m555,'F775Wmag':m775,'F814Wmag':m814,
-                      'F110Wmag':m110,'F125Wmag':m125,'F160Wmag':m160})
-popdf.to_csv('/Users/toneill/N159/isochrones/artpop_df.csv',index=False)#_noisy
+                      'F555Wmag0':m555,'F775Wmag0':m775,'F814Wmag0':m814,
+                      'F110Wmag0':m110,'F125Wmag0':m125,'F160Wmag0':m160,
+                      'F555Wmag': mag5, 'F775Wmag': mag7, 'F814Wmag': mag8,
+                      'F110Wmag': mag1, 'F125Wmag': mag2, 'F160Wmag': mag6  })
+#popdf.to_csv('/Users/toneill/N159/isochrones/artpop_df.csv',index=False)#_noisy
+popdf.to_csv('/Users/toneill/N159/isochrones/artpop_trim_train_df.csv',index=False)#_noisy
 
 plt.figure(figsize=(6,8))
-#plt.scatter(c_57,mag5,c=ssp.ssp_labels,s=0.2,alpha=0.9)
-#plt.scatter(col_57,m555,c='k',s=0.05,marker='x')
-plt.scatter(col_57,m555,c=ssp.ssp_labels,s=0.05,marker='x')
+plt.scatter(c_57,mag5,c=ssp.ssp_labels,s=0.3,alpha=0.9)
+plt.scatter(col_57,m555,c='k',s=0.01,marker='x')
+#plt.scatter(col_57,m555,c=ssp.ssp_labels,s=0.05,marker='x')
 plt.gca().invert_yaxis()
 plt.xlabel('555 - 775')
 plt.ylabel('555')
 plt.tight_layout()
+#plt.savefig('artpop_age_cmd.png',dpi=300)
 
-
-
-
-# generate boolean phase masks (ONLY WORKS IF SINGLE SSP)
 #PMS = ssp.select_phase('PMS')
-# or could single out which age came from via
-# old = ssp.ssp_labels == 1
-# etc
 unique_phases = np.unique(phases)
 plt.figure(figsize=(6,7))
 for phase in unique_phases:
     pphase = phases == phase
-    plt.scatter(col_57[pphase],m555[pphase], s=3, label=phase)
+    plt.scatter(c_57[pphase],mag5[pphase], s=1, label=phase,alpha=0.5)
 plt.legend()
 plt.gca().invert_yaxis()
 plt.tight_layout()
 plt.xlabel('555 - 775')
 plt.ylabel('555')
+#plt.savefig('artpop_phase_cmd.png',dpi=300)
+
+
+is_pms = phases == 'PMS'
+
+import cmasher as cmr
+cmap_use = cmr.get_sub_cmap('inferno', 0, 0.9)  # cmr.ember, 0.2, 0.8)
+
+
+plt.figure(figsize=(6,7))
+plt.scatter(c_57,mag5, s=0.5,c=is_pms,alpha=0.3,cmap=cmap_use)
+plt.gca().invert_yaxis()
+plt.tight_layout()
+plt.xlabel('555 - 775')
+plt.ylabel('555')
+plt.tight_layout()
+#plt.savefig('artpop_train_cmd.png',dpi=300)
+
 
 
 ########################################################################################

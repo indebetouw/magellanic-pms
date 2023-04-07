@@ -216,7 +216,7 @@ from astropy import units as u
 import matplotlib.pyplot as plt
 import numpy as np
 
-region = 'n159-e'
+region = 'n159-w'
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
 finphotdir = '/Users/toneill/N159/photometry/FINAL_PHOT/'+region+'/'
 
@@ -242,20 +242,20 @@ vi_df.to_csv(finphotdir+region+'_phot_vis.csv',index=False)
 ir_df.to_csv(finphotdir+region+'_phot_ir.csv',index=False)
 
 
+
 ###################################################
 
 region = 'n159-all'
 savephotdir2 = '/Users/toneill/N159/photometry/FINAL_PHOT/'
 finphotdir = '/Users/toneill/N159/photometry/FINAL_PHOT/'+region+'/'
 
-
-fuse = 'vis.ir'
+fuse = 'ir'
 
 #for fuse in ['vis','ir','vis.ir']:
 edf = pd.read_csv(savephotdir2+'n159-e/'+f'n159-e_phot_{fuse}.csv')
 wdf = pd.read_csv(savephotdir2+'n159-w/'+f'n159-w_phot_{fuse}.csv')
 sdf = pd.read_csv(savephotdir2+'n159-s/'+f'n159-s_phot_{fuse}.csv')
-#alldf =pd.read_csv(finphotdir+region+f'_phot_{fuse}.csv')
+alldf =pd.read_csv(finphotdir+region+f'_phot_{fuse}.csv')
 
 print(f'\n {fuse}')
 print(f'E: {len(edf)}')
@@ -296,117 +296,10 @@ comb_ews.to_csv(finphotdir+region+f'_phot_{fuse}.csv',index=False)
 wdf['in_n159e'] = sep_constraint
 wdf.to_csv(savephotdir2+'n159-w/'+f'n159-w_phot_{fuse}.csv',index=False)
 
-
-
-
 ##############################################
 
 
-plt.figure(figsize=(6,6))
-plt.scatter(cmatch_ew['ra_814_w']-cmatch_ew['ra_814_e'],
-            cmatch_ew['dec_814_w']-cmatch_ew['dec_814_e'],s=3)
-plt.axvline(x=0,c='grey')
-plt.axhline(y=0,c='grey')
-
-
-plt.figure(figsize=(6,6))
-plt.scatter(cmatch_ew['mag_555_w']/cmatch_ew['mag_555_e'],
-            cmatch_ew['mag_814_w']/cmatch_ew['mag_814_e'],s=1,alpha=0.5)
-plt.axvline(x=1,c='grey')
-plt.axhline(y=1,c='grey')
 
 
 
-
-
-
-
-
-###
-
-#cmatch_irvi = pd.read_csv(savephotdir+region+'_reduce_visir.phot.csv')
-
-plt.figure(figsize=(6,6))
-plt.scatter(cmatch_irvi['ra_160']-cmatch_irvi['ra_814'],
-            cmatch_irvi['dec_160']-cmatch_irvi['dec_814'],s=3)
-plt.axvline(x=0,c='grey')
-plt.axhline(y=0,c='grey')
-
-
-
-
-plt.figure()
-#plt.scatter(vi_df['555min814'],vi_df['mag_555'],s=0.4,label='All visible')
-plt.scatter(cmatch_irvi['555min814'],cmatch_irvi['mag_555'],s=0.4,c='r',label='Match in IR')
-plt.xlabel('555 - 814')
-plt.ylabel('555')
-plt.legend()
-plt.gca().invert_yaxis()
-plt.title(region)
-
-plt.figure()
-#plt.scatter(ir_df['125min160'],ir_df['mag_125'],s=0.4,label='All IR')
-plt.scatter(cmatch_irvi['125min160'],cmatch_irvi['mag_125'],s=0.4,c='r',label='Match in visible')
-plt.xlabel('125 - 160')
-plt.ylabel('125')
-plt.legend(loc='upper right')
-plt.gca().invert_yaxis()
-plt.title(region)
-#plt.xlim(-2,3)
-#plt.ylim(26,16)
-
-#################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#filts=["f555w","f814w"]
-filts = ["f814w", "f160w"]
-shortfilts = [filts[0][1:4],filts[1][1:4]]
-
-
-match12 = np.zeros(len(vi_df), dtype=int) - 1
-match21 = np.zeros(len(ir_df), dtype=int) - 1
-d = 0.2  # arcsec
-
-for i in range(len(vi_df)):
-    dra = np.absolute(vi_df['ra_'+shortfilts[0]][i] -ir_df['ra_'+filts[1]]) * np.cos(vi_df['dec_'+shortfilts[0]][i] * np.pi / 180)
-    dde = np.absolute(vi_df['dec_'+shortfilts[0]][i] - ir_df['dec_'+filts[1]])
-    z = np.where((dra < d) * (dde < d))[0]
-    if len(z) > 0:
-        d2 = dra[z] ** 2 + dde[z] ** 2
-        zz = z[np.where(d2 == d2.min())[0][0]]
-        match12[i] = zz
-        match21[zz] = i
-
-z=np.where(match12>=0)[0]
-#c1=c[filts[0]]
-#c2=c[filts[1]]
-
-vi_imatch = vi_df[match12>=0]
-ir_vmatch = ir_df[match21>=0]
-
-
-
-pl.plot(vi_df['555min814'].values[z],vi_df['mag_555'].values[match12[z]],'.',label='all',markersize=0.5)
-pl.gca().invert_yaxis()
 

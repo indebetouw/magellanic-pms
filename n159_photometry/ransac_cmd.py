@@ -21,10 +21,22 @@ all_vi.to_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv',index=False)'''
 
 ####################################################
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
-e_vi = pd.read_csv(savephotdir+'n159-e_reduce.phot.cutblue.csv')
-w_vi = pd.read_csv(savephotdir+'n159-w_reduce.phot.cutblue.csv')
-s_vi = pd.read_csv(savephotdir+'n159-s_reduce.phot.cutblue.csv')
-all_vi = pd.read_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv')
+#e_vi = pd.read_csv(savephotdir+'n159-e_reduce.phot.cutblue.csv')
+#w_vi = pd.read_csv(savephotdir+'n159-w_reduce.phot.cutblue.csv')
+#s_vi = pd.read_csv(savephotdir+'n159-s_reduce.phot.cutblue.csv')
+#all_vi = pd.read_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv')
+
+
+
+
+from load_data import load_phot
+
+fuse = 'vis'
+all_vi = load_phot(region='n159-all',fuse=fuse)
+e_vi = load_phot(region='n159-e',fuse=fuse)
+w_vi = load_phot(region='n159-w',fuse=fuse)
+s_vi = load_phot(region='n159-s',fuse=fuse)
+
 region_dicts = {'n159e':e_vi,'n159w':w_vi,'n159s':s_vi,'all':all_vi}
 
 ####################################################
@@ -114,7 +126,7 @@ for i in range(4):
     ran_c = ran_mc[:, 1]
     ran_in = ran_mc[:, 2]
     P_in = np.sum(ran_in, axis=0) / nrun
-    #saveslopes.append(ran_m)
+    saveslopes.append(ran_m)
 
     line_X = np.arange(-0.2, 1.45, 0.05)#X0.min(), X0.max() - 0.5, 0.05)  # [:, np.newaxis]
     line_Y = np.median(ran_m) * line_X + np.median(ran_c)
@@ -181,7 +193,7 @@ ax = fig.add_subplot(111)
 [sns.kdeplot(saveslopes[i],label=f'{region_names[i].upper()}: Median = {np.median(saveslopes[i]):.3}',
         fill=True,linewidth=1.75,bw_adjust=2,color=cols_kdes[i]) for i in range(len(saveslopes)-1)]
 [plt.axvline(x=np.median(saveslopes[i]),ls='--',lw=1,c=cols_kdes[i]) for i in range(len(saveslopes)-1)]
-plt.legend(loc='upper left',fontsize=12,framealpha=1)
+plt.legend(loc='upper right',fontsize=12,framealpha=1)
 plt.xlabel('RANSAC Slope',fontsize=13,labelpad=10)
 plt.ylabel('Probability density',fontsize=13,labelpad=10)
 #plt.title('KDEs of RANSAC Slopes')
@@ -195,8 +207,11 @@ plt.savefig('ransac_kdes.png',dpi=300)
 
 
 med_slopes = [np.round(np.median(saveslopes[i]),3) for i in range(len(saveslopes))]
+print(med_slopes)
+#[2.696, 2.526, 2.471, 2.543]
 
-med_slopes = {'n159e':2.764,'n159w':2.574,'n159s':2.438,'all':2.53}
+### OLD
+###med_slopes = {'n159e':2.764,'n159w':2.574,'n159s':2.438,'all':2.53}
 
 
 ##################################################################
