@@ -8,10 +8,11 @@ from astropy import units as u
 #artpop.get_filter_names('HST_WFC3')
 filts_use = ['WFC3_UVIS_F555W','WFC3_UVIS_F775W',
              'WFC3_UVIS_F814W','WFC3_IR_F110W',
-             'WFC3_IR_F125W','WFC3_IR_F160W']
+             'WFC3_IR_F125W','WFC3_IR_F160W',
+             'Bessell_V','Bessell_I']
 
 if fit_trans:
-    popprops = {'feh':-0.30, 'phot_system':'HST_WFC3',
+    popprops = {'feh':-0.30, 'phot_system':['HST_WFC3','UBVRIplus'],
                 'imf':'kroupa','distance':50*u.kpc,
                 'num_stars':1e4,'mag_limit':27,'mag_limit_band':'WFC3_UVIS_F555W'}#,'a_lam':0.3}
 

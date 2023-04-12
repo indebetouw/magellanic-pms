@@ -17,18 +17,30 @@ from astropy import units as u
 photdir = '/Users/toneill/N159/photometry/'
 
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
-e_vi = pd.read_csv(savephotdir+'n159-e_reduce.phot.cutblue.csv')
+'''e_vi = pd.read_csv(savephotdir+'n159-e_reduce.phot.cutblue.csv')
 w_vi = pd.read_csv(savephotdir+'n159-w_reduce.phot.cutblue.csv')
 s_vi = pd.read_csv(savephotdir+'n159-s_reduce.phot.cutblue.csv')
 all_vi = pd.read_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv')
+region_dicts = {'n159e':e_vi,'n159w':w_vi,'n159s':s_vi,'all':all_vi}'''
+
+
+from load_data import load_phot
+
+fuse = 'vis'
+all_vi = load_phot(region='n159-all',fuse=fuse)
+e_vi = load_phot(region='n159-e',fuse=fuse)
+w_vi = load_phot(region='n159-w',fuse=fuse)
+s_vi = load_phot(region='n159-s',fuse=fuse)
+
 region_dicts = {'n159e':e_vi,'n159w':w_vi,'n159s':s_vi,'all':all_vi}
 
 r_df = region_dicts['all']
 
+
 zar_matches = pd.read_csv(photdir+'zaritsky_15arcsec_555_814.csv')
 
-med_slopes = {'n159e':2.764,'n159w':2.574,'n159s':2.438,'all':2.53}
-
+#med_slopes = {'n159e':2.764,'n159w':2.574,'n159s':2.438,'all':2.53}
+med_slopes = {'n159e':2.696,'n159w':2.526,'n159s':2.471,'all':2.543}
 
 from astropy.io import ascii
 
@@ -216,7 +228,9 @@ for k in range(4):
 
 
 from skimage import measure
-alma_co = fits.open('/Users/toneill/N159/alma/12CO_combined.regrid.gtr0.2K.maximum.fits')
+#alma_co = fits.open('/Users/toneill/N159/alma/12CO_combined.regrid.gtr0.2K.maximum.fits')
+alma_co = fits.open('/Users/toneill/N159/alma/Ridge/N159_mosaic_12CO21_max.fits')
+
 alma_cont = np.where(alma_co[0].data >= -100000, 0, 1)
 contours = measure.find_contours(alma_cont, 0.9)
 
@@ -239,17 +253,15 @@ axs = [ax1, ax2, ax3, ax4]
 
     ax = axs[k]
 
-    ax.contour(alma_co[0].data, levels=[5], colors=['grey'],  zorder=3)
+    ax.contour(alma_co[0].data, levels=[5], colors=['grey'],  zorder=3,lws=[1])
     sss = ax.scatter(h_ra, h_dec, c=r_avs, cmap=cmr.ember_r, s=15, alpha=0.5, transform=ax.get_transform('fk5'), zorder=0,vmin=0.65,vmax=2.65)
     # ax.scatter(ums_ra, ums_dec, c='c', marker='x',s=1, transform=ax.get_transform('fk5'),zorder=2)
     ax.set_title(f'{region.upper()}')
-    #ax.set_xlim(115, 330)
-    #ax.set_ylim(-99, 255)
 
     for contour in contours:
         ax.plot(contour[:, 1], contour[:, 0], c='k',  lw=1)
 
-ax1.set_xlim(120,250)
+'''ax1.set_xlim(120,250)
 ax1.set_ylim(90,220)
 
 ax2.set_xlim(195,325)
@@ -259,7 +271,7 @@ ax3.set_xlim(115,255)
 ax3.set_ylim(-85, 55)
 
 ax4.set_xlim(115,335)
-ax4.set_ylim(-80,225)
+ax4.set_ylim(-80,225)'''
 
 [ax.set_xlabel('RA') for ax in [ax3,ax4]]
 [ax.set_ylabel('Dec',labelpad=0) for ax in [ax1,ax3]]
@@ -273,9 +285,9 @@ fig.tight_layout()
 
 fig.subplots_adjust(right=0.9,bottom=0.05,left=0.07,wspace=0.14)
 
-sss = ax4.scatter(h_ra[-1], h_dec[-1], c=r_avs[-1], cmap=cmr.ember_r,
+'''sss = ax4.scatter(h_ra[-1], h_dec[-1], c=r_avs[-1], cmap=cmr.ember_r,
                   s=10, alpha=1, transform=ax4.get_transform('fk5'), zorder=0,
-                 vmin=0.65, vmax=2.65)
+                 vmin=0.65, vmax=2.65)'''
 
 cbar_ax = fig.add_axes([0.915, 0.05, 0.02, 0.91])
 cbar = fig.colorbar(sss, cax=cbar_ax)
@@ -285,8 +297,8 @@ cbar.ax.tick_params(labelsize=8)
 fig.tight_layout()
 fig.subplots_adjust(right=0.9,bottom=0.05,left=0.07,wspace=0.14)
 
-ax1.set_title('N159W')
-ax2.set_title('N159E')
+#ax1.set_title('N159W')
+#ax2.set_title('N159E')
 plt.savefig('red_maps.png',dpi=300)
 
 #########################
@@ -348,10 +360,10 @@ dered_e = pd.read_csv(photdir + fnames[0] +'.dered.csv')
 dered_w = pd.read_csv(photdir + fnames[1] +'.dered.csv')
 
 plt.figure()
-plt.scatter(z_5min8,z_555,s=0.1,alpha=0.4,c='k',label='all')
+plt.scatter(z_5min8,z_555,s=0.05,alpha=0.4,c='grey',label='all',zorder=0)
 #plt.plot(line_X + exp_VminI, line_Y + exp_mV, color="royalblue", linewidth=2, ls='--',
 #        label=f"Median RANSAC")
-sss = plt.scatter(ums_x,ums_y,label='ums',c=ums_dzams ,cmap=cmr.ember_r)#'inferno_r')
+sss = plt.scatter(ums_x,ums_y,label='ums',c=ums_dzams ,cmap=cmr.ember_r,s=1)#'inferno_r')
 plt.colorbar(sss, label='Distance to ZAMS along Rv [mag]')
 plt.gca().invert_yaxis()
 plt.plot(zams_x,zams_y,c='k',label='zams (20 myr)')

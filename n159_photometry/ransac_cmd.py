@@ -8,17 +8,6 @@ from astropy.coordinates import SkyCoord
 from sklearn import linear_model
 import seaborn as sns
 
-'''e_vi = e_vi[e_vi['555min814'] > -0.2]
-w_vi = w_vi[w_vi['555min814'] > -0.2]
-s_vi = s_vi[s_vi['555min814'] > -0.2]
-all_vi = all_vi[all_vi['555min814'] > -0.2]
-
-e_vi.to_csv(savephotdir+'n159-e_reduce.phot.cutblue.csv',index=False)
-w_vi.to_csv(savephotdir+'n159-w_reduce.phot.cutblue.csv',index=False)
-s_vi.to_csv(savephotdir+'n159-s_reduce.phot.cutblue.csv',index=False)
-all_vi.to_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv',index=False)'''
-
-
 ####################################################
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
 #e_vi = pd.read_csv(savephotdir+'n159-e_reduce.phot.cutblue.csv')
@@ -26,12 +15,9 @@ savephotdir = '/Users/toneill/N159/photometry/reduced/'
 #s_vi = pd.read_csv(savephotdir+'n159-s_reduce.phot.cutblue.csv')
 #all_vi = pd.read_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv')
 
-
-
-
 from load_data import load_phot
 
-fuse = 'vis'
+fuse = 'vis.ir'
 all_vi = load_phot(region='n159-all',fuse=fuse)
 e_vi = load_phot(region='n159-e',fuse=fuse)
 w_vi = load_phot(region='n159-w',fuse=fuse)
@@ -59,10 +45,8 @@ def convert_bvri_hst(m_bvri,c_bvri,c0=None,c1=None,c2=None,zeropt=0):
     #https://iopscience.iop.org/article/10.1086/444553/pdf
     return -(c0 + c1 * c_bvri + c2 * c_bvri**2) + m_bvri + zeropt
 
-
 exp_555 =convert_bvri_hst(exp_mV,exp_VminI, c0=25.719, c1=-0.088, c2=0.043,zeropt=25.724)
 exp_814 = convert_bvri_hst(exp_mI,exp_VminI, c0=25.489, c1=0.041, c2=-0.093,zeropt=25.501)
-
 exp_555min814 = exp_555 - exp_814
 
 
@@ -106,8 +90,8 @@ for i in range(4):
     region = list(region_dicts.keys())[i]
     #region = 'n159e'
     r_df = region_dicts[region]
-    xs = r_df['555min814']
-    ys = r_df['mag_555']
+    xs = r_df['125min160']
+    ys = r_df['mag_160']
 
     xy_bounds = xyb_dict[region]
     d_rcline = (xs - xy_bounds[0]) * (xy_bounds[3]-xy_bounds[2]) - (ys-xy_bounds[2])*(xy_bounds[1]-xy_bounds[0])
