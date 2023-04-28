@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from astropy import units as u
 
-#artpop.get_filter_names('HST_WFC3')
+artpop.get_filter_names('HST_WFC3')
 filts_use = ['WFC3_UVIS_F555W','WFC3_UVIS_F775W',
              'WFC3_UVIS_F814W','WFC3_IR_F110W',
-             'WFC3_IR_F125W','WFC3_IR_F160W',
-             'Bessell_V','Bessell_I']
+             'WFC3_IR_F125W','WFC3_IR_F160W','ACS_WFC_F550M',
+            'Bessell_V','Bessell_I','2MASS_J','2MASS_H','2MASS_Ks']
 
 if fit_trans:
-    popprops = {'feh':-0.30, 'phot_system':['HST_WFC3','UBVRIplus'],
+    popprops = {'feh':-0.30, 'phot_system':['HST_WFC3','HST_ACSWF','UBVRIplus'],
                 'imf':'kroupa','distance':50*u.kpc,
                 'num_stars':1e4,'mag_limit':27,'mag_limit_band':'WFC3_UVIS_F555W'}#,'a_lam':0.3}
 
@@ -40,6 +40,16 @@ def add_noise(mag,mu=1,sigma=1):
     #noise = np.random.normal(mu,sigma,len(mag))
     return mag + np.random.normal(mu,sigma,len(mag))
 
+mu = 0
+sigma = 0.1
+
+popdf = pd.DataFrame({'phase':phases,'agegroup':ssp.ssp_labels})
+for i in range(len(filts_use)):
+    print(i)
+    mfilt = ssp.star_mags(filts_use[i])
+    mfilt_noise = add_noise(mfilt,mu=mu,sigma=sigma)
+    popdf[filts_use[i]] = mfilt
+    popdf[filts_use[i]+'_noisy'] = mfilt_noise
 
 m555 = ssp.star_mags(filts_use[0])
 m775 = ssp.star_mags(filts_use[1])
@@ -47,28 +57,30 @@ m814 = ssp.star_mags(filts_use[2])
 m110 = ssp.star_mags(filts_use[3])
 m125 = ssp.star_mags(filts_use[4])
 m160 = ssp.star_mags(filts_use[5])
+#m550 = ssp.star_mags(filts_use[6])
 col_57 = m555 - m775
 col_58 = m555 - m814
 
-mu = 0
-sigma = 0.1
+
 mag5 = add_noise(m555,mu=mu,sigma=sigma)
 mag7 = add_noise(m775,mu=mu,sigma=sigma)
 mag8 = add_noise(m814,mu=mu,sigma=sigma)
 mag1 = add_noise(m110,mu=mu,sigma=sigma)
 mag2 = add_noise(m125,mu=mu,sigma=sigma)
 mag6 = add_noise(m160,mu=mu,sigma=sigma)
+#mag550 = add_noise(m550,mu=mu,sigma=sigma)
+
 
 c_57 = mag5 - mag7
 c_58 = mag5 - mag8
 
 popdf = pd.DataFrame({'phase':phases,'agegroup':ssp.ssp_labels,
                       'F555Wmag0':m555,'F775Wmag0':m775,'F814Wmag0':m814,
-                      'F110Wmag0':m110,'F125Wmag0':m125,'F160Wmag0':m160,
+                      'F110Wmag0':m110,'F125Wmag0':m125,'F160Wmag0':m160,'F550Nmag0':m550,
                       'F555Wmag': mag5, 'F775Wmag': mag7, 'F814Wmag': mag8,
-                      'F110Wmag': mag1, 'F125Wmag': mag2, 'F160Wmag': mag6  })
-#popdf.to_csv('/Users/toneill/N159/isochrones/artpop_df.csv',index=False)#_noisy
-popdf.to_csv('/Users/toneill/N159/isochrones/artpop_trim_train_df.csv',index=False)#_noisy
+                      'F110Wmag': mag1, 'F125Wmag': mag2, 'F160Wmag': mag6,'F550Nmag':mag550  })
+popdf.to_csv('/Users/toneill/N159/isochrones/artpop_df.csv',index=False)#_noisy
+#popdf.to_csv('/Users/toneill/N159/isochrones/artpop_trim_train_df.csv',index=False)#_noisy
 
 plt.figure(figsize=(6,8))
 plt.scatter(c_57,mag5,c=ssp.ssp_labels,s=0.3,alpha=0.9)

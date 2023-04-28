@@ -94,14 +94,6 @@ plt.title('z&h')
 
 ###########################################
 
-def ransac_intercept(X, y):
-    ransac = linear_model.RANSACRegressor(max_trials=1000,
-                                          base_estimator=linear_model.LinearRegression(fit_intercept=True))
-    ransac.fit(X, y)
-    inlier_mask = ransac.inlier_mask_
-    m, c = float(ransac.estimator_.coef_), float(ransac.estimator_.intercept_)
-
-    return [m, c, inlier_mask * 1]
 
 right_zams = np.full(len(z_5min8),False)
 for i in range(len(z_5min8)):
@@ -186,6 +178,7 @@ for k in range(4):
     dered_umsx = []
     dered_umsy = []
     ums_dzams = []
+    ums_dy = []
 
     for i in range(len(ums_x)):
         print(100 * i / len(ums_x))
@@ -200,13 +193,15 @@ for k in range(4):
         zams_closest = np.argmin(np.sqrt((zams_x - xrange[nearj]) ** 2 + (zams_y - y_rv[nearj]) ** 2))
         near_zamsj = np.argmin(d_zams)
         d_zams = np.sqrt((xi - zams_x[zams_closest]) ** 2 + (yi - zams_y[zams_closest]) ** 2)
-        corr_x = xi - zams_x[zams_closest]
+        #corr_x = xi - zams_x[zams_closest]
         corr_y = yi - zams_y[zams_closest]
         ums_dzams.append(d_zams)
+        ums_dy.append(corr_y)
         dered_umsx.append(zams_x[zams_closest])
         dered_umsy.append(zams_y[zams_closest])
 
     ums_dzams = np.array(ums_dzams)
+    ums_dy = np.array(ums_dy)
     ums_ra = r_zar['RAJ2000'].values
     ums_dec = r_zar['DEJ2000'].values
 
@@ -216,7 +211,7 @@ for k in range(4):
     nnear = 10
     eps = 10. / 3600
 
-    UAV = ums_dzams
+    UAV = ums_dy#ums_dzams
     # separate dfs into nx2 arrays for KNN
     UCoords = [[ums_ra[i], ums_dec[i]] for i in range(len(ums_ra))]
     TCoords = np.array([[h_ra[i], h_dec[i]] for i in range(len(h_dec))])
@@ -253,9 +248,9 @@ axs = [ax1, ax2, ax3, ax4]
 
     ax = axs[k]
 
-    ax.contour(alma_co[0].data, levels=[5], colors=['grey'],  zorder=3,lws=[1])
-    sss = ax.scatter(h_ra, h_dec, c=r_avs, cmap=cmr.ember_r, s=15, alpha=0.5, transform=ax.get_transform('fk5'), zorder=0,vmin=0.65,vmax=2.65)
-    # ax.scatter(ums_ra, ums_dec, c='c', marker='x',s=1, transform=ax.get_transform('fk5'),zorder=2)
+    ax.contour(alma_co[0].data, levels=[3], colors=['c'],  zorder=3,lws=[1])
+    sss = ax.scatter(h_ra, h_dec, c=r_avs, cmap=cmr.ember_r, s=15, alpha=0.5, transform=ax.get_transform('fk5'), zorder=0,vmin=0.65,vmax=2.4)
+    #ax.scatter(ums_ra, ums_dec, c='k', marker='x',s=5, transform=ax.get_transform('fk5'),zorder=2)
     ax.set_title(f'{region.upper()}')
 
     for contour in contours:
@@ -300,6 +295,35 @@ fig.subplots_adjust(right=0.9,bottom=0.05,left=0.07,wspace=0.14)
 #ax1.set_title('N159W')
 #ax2.set_title('N159E')
 plt.savefig('red_maps.png',dpi=300)
+
+
+###########################################################################
+## model as gaussian process
+
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+
+X = UCoords#[ums_ra,ums_dec]
+y = ums_dy
+
+kernel = RBF(0.1)
+gpr = GaussianProcessRegressor(kernel=kernel).fit(X, y)
+gpr.score(X,y)
+
+Xnew = TCoords
+pred = gpr.predict(Xnew)
+
+fig = plt.figure(figsize=(9, 9))
+ax = fig.add_subplot(111, projection=wcs.WCS(alma_co[0].header))
+region = list(region_dicts.keys())[k]
+ax.contour(alma_co[0].data, levels=[3], colors=['c'],  zorder=3,lws=[1])
+sss = ax.scatter(h_ra, h_dec, c=pred, cmap='Reds', s=15, alpha=1, transform=ax.get_transform('fk5'), zorder=0)#,vmin=0.65,vmax=2.4)
+#ax.scatter(ums_ra, ums_dec, c='k', marker='x',s=5, transform=ax.get_transform('fk5'),zorder=2)
+for contour in contours:
+    ax.plot(contour[:, 1], contour[:, 0], c='k',  lw=1)
+plt.colorbar(sss)
+plt.xlim(183,660)
+plt.ylim(14,544)
 
 #########################
 

@@ -20,6 +20,39 @@ attach(data)
 head(data)
 ```
 
+Goal 1: convert 2MASS J and H to F125W and F160W
+```{r}
+
+#result<-lm(cbind(WFC3_IR_F125W,WFC3_IR_F160W)~ X2MASS_J + X2MASS_H + X2MASS_Ks)
+#summary(result)
+
+JminK <- X2MASS_J-X2MASS_Ks
+HminK <- X2MASS_H-X2MASS_Ks
+
+result <- lm(WFC3_IR_F125W ~ X2MASS_J )#+JminK)
+summary(result)
+
+result <- lm(WFC3_IR_F160W ~ X2MASS_H)# +HminK)
+summary(result)
+
+result <- lm(WFC3_IR_F125W ~ WFC3_IR_F110W)# +HminK)
+summary(result)
+
+```
+
+```{r}
+
+c5min8 <-WFC3_UVIS_F555W - WFC3_UVIS_F814W
+c5min7 <- WFC3_UVIS_F555W - WFC3_UVIS_F775W
+
+result <- lm(WFC3_UVIS_F814W ~ WFC3_UVIS_F775W )
+summary(result)
+
+```
+
+
+##################### old below here
+
 ```{r}
 # fit model
 #result1<-lm(F814Wmag~ F775Wmag + F110Wmag + F160Wmag)# + F555Wmag)

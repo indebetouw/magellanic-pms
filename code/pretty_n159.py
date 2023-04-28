@@ -11,10 +11,25 @@ import aplpy
 import numpy as np
 from astropy.io import fits
 from astropy import units as u
-
+import aplpy
 
 import pandas as pd
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
+
+fig = plt.figure()
+img = aplpy.FITSFigure(refdir+'f814_n159.fits',figure=fig)
+img.show_grayscale(stretch='arcsinh')
+img.add_scalebar(length=0.05729*u.deg)
+img.scalebar.set_color('red')
+img.scalebar.set_label('50 pc')
+img.scalebar.set_corner('top right')
+fig.show()
+
+scale1_len_arcsec = 206265. * 1 / (50*1000.) # 1 pc in arcsec
+scale1_len = (scale1_len_arcsec*u.arcsec).to(u.pixel,
+                    u.pixel_scale(ne_8[0].header['CD1_2']*u.deg/u.pixel))
+print(scale1_len)
+
 
 
 photdir = '/Users/toneill/N159/photometry/'

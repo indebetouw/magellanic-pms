@@ -7,9 +7,9 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import wcs
 
-region="n159-e"
-shortregion = 'n159e'
-region_shortname = 'n159e'
+region="off-point"#n159-e"
+shortregion = 'off-point'#n159e'
+region_shortname = 'off-point'#n159e'
 
 #######################################################
 #filts=["f555w","f814w"]
@@ -27,6 +27,7 @@ otype = 'col11'
 crd = 'col10'
 
 ref_filt = '_f160ref' # '_f814ref'
+#ref_filt = '_f814ref'
 
 #workdir="/Users/remy/cv/magellanic/n159/"
 
@@ -216,15 +217,17 @@ from astropy import units as u
 import matplotlib.pyplot as plt
 import numpy as np
 
-region = 'n159-w'
+region = 'off-point'
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
 finphotdir = '/Users/toneill/N159/photometry/FINAL_PHOT/'+region+'/'
 
-vi_df = pd.read_csv(savephotdir+region+'_reduce.phot.csv')
+vi_df = pd.read_csv(savephotdir+region+'_reduce_f555w_f814w.phot.csv')
 ir_df = pd.read_csv(savephotdir+region+'_reduce_f125w_f160w.phot.csv')
 ## rename ir position names
 ir_df = ir_df.rename(columns={'ra_f125w':'ra_125','dec_f125w':'dec_125',
                               'ra_f160w':'ra_160','dec_f160w':'dec_160'})
+vi_df = vi_df.rename(columns={'ra_f555w':'ra_555','dec_f555w':'dec_555',
+                              'ra_f814w':'ra_814','dec_f814w':'dec_814'})
 
 c814 = SkyCoord(ra=vi_df['ra_814'] * u.deg, dec=vi_df['dec_814'] * u.deg)
 c160 = SkyCoord(ra=ir_df['ra_160'] * u.deg, dec=ir_df['dec_160'] * u.deg)
