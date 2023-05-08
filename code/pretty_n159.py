@@ -25,33 +25,94 @@ img.scalebar.set_label('50 pc')
 img.scalebar.set_corner('top right')
 fig.show()
 
-scale1_len_arcsec = 206265. * 1 / (50*1000.) # 1 pc in arcsec
+duse = 10**(1+18.48/5)
+scale1_len_arcsec = 206265. * 1 / duse # 1 pc in arcsec # pc /arcsec
 scale1_len = (scale1_len_arcsec*u.arcsec).to(u.pixel,
                     u.pixel_scale(ne_8[0].header['CD1_2']*u.deg/u.pixel))
 print(scale1_len)
 
 
 
+def summ_obs(filt):
+    head = filt[0].header
+    #print(f"exptime: {head['EXPTIME']:.0f}s")
+    arcs_ppix = (np.abs(head['CDELT1'])*u.deg/u.pixel).to(u.arcsec/u.pixel)
+    npix1 = head['CRPIX1']*u.pix*2
+    npix2 = head['CRPIX2']*u.pix*2
+    fov1 = npix1*arcs_ppix
+    fov2 = npix2*arcs_ppix
+    print(f'{fov1.to(u.arcmin):.1f} x {fov2.to(u.arcmin):.1f}')
+    print(f'{fov1  / (scale1_len_arcsec*(u.arcsec/u.pc)):.0f}  x {fov2  / (scale1_len_arcsec*(u.arcsec/u.pc)):.0f} ')
+
+summ_obs(n_8)
+
+summ_obs(ne_5)
+summ_obs(ne_8)
+summ_obs(ne_12)
+summ_obs(ne_16)
+
+summ_obs(nw_5)
+summ_obs(nw_8)
+summ_obs(nw_12)
+summ_obs(nw_16)
+
+summ_obs(ns_5)
+summ_obs(ns_8)
+summ_obs(ns_12)
+summ_obs(ns_16)
+
+summ_obs(off_5)
+summ_obs(off_8)
+summ_obs(off_12)
+summ_obs(off_16)
+
+
+def total_area(filts):
+    sqarea = 0
+    for filt in filts:
+        head = filt[0].header
+        #print(f"exptime: {head['EXPTIME']:.0f}s")
+        arcs_ppix = (np.abs(head['CD1_2'])*u.deg/u.pixel).to(u.arcsec/u.pixel)
+        npix1 = head['CRPIX1']*u.pix*2
+        npix2 = head['CRPIX2']*u.pix*2
+        fov1 = npix1*arcs_ppix
+        fov2 = npix2*arcs_ppix
+        #print(f'{fov1.to(u.arcmin):.1f} x {fov2.to(u.arcmin):.1f}')
+        #print(f'{fov1  / (scale1_len_arcsec*(u.arcsec/u.pc)):.0f}  x {fov2  / (scale1_len_arcsec*(u.arcsec/u.pc)):.0f} ')
+        sqarea += (fov1  / (scale1_len_arcsec*(u.arcsec/u.pc))*fov2  / (scale1_len_arcsec*(u.arcsec/u.pc)))
+    print(f'{sqarea:.0f} ')
+    print(f' equiv ({np.sqrt(sqarea.value):0f} pc)^2')
+
+total_area([ne_8,nw_8,ns_8,off_8])
+
+total_area([ne_16,nw_16,ns_16,off_16])
+
+#############
 photdir = '/Users/toneill/N159/photometry/'
 #refdir = photdir + 'ref_files_WCS/'
 refdir = '/Users/toneill/N159/hst_mosaics/'
 
-n_8 = fits.open(refdir+'f814_n159.fits')
+#n_8 = fits.open(refdir+'f814_n159.fits')
 
 ne_8 = fits.open(refdir + 'f814_n159e.fits')
 nw_8 = fits.open(refdir + 'f814_n159w.fits')
 ns_8 = fits.open(refdir + 'f814_n159s.fits')
-#off_8 = fits.open(refdir + 'off_f814w_drc_sci.chip0.fits')
+off_8 = fits.open(refdir + 'f814_off.fits')
 
 ne_16 = fits.open(refdir + 'f160_n159e.fits')
 nw_16 = fits.open(refdir + 'f160_n159w.fits')
 ns_16 = fits.open(refdir + 'f160_n159s.fits')
-#off_16 = fits.open(refdir + 'off_f160w_drz_sci.chip0.fits')
+off_16 = fits.open(refdir + 'f160_off.fits')
 
 ne_5 = fits.open(refdir + 'f555_n159e.fits')
+nw_5 = fits.open(refdir + 'f555_n159w.fits')
+ns_5 = fits.open(refdir + 'f555_n159s.fits')
+off_5 = fits.open(refdir + 'f555_off.fits')
 
 ne_12 = fits.open(refdir + 'f125_n159e.fits')
-
+nw_12 = fits.open(refdir + 'f125_n159w.fits')
+ns_12 = fits.open(refdir + 'f125_n159s.fits')
+off_12 = fits.open(refdir + 'f125_off.fits')
 
 con_ne_16 = hcongrid(ne_16[0].data,ne_16[0].header,
                  ne_8[0].header,preserve_bad_pixels=False)

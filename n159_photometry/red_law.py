@@ -53,12 +53,44 @@ plt.gca().invert_yaxis()
 plt.xlim(-0.1,2.5)
 plt.ylim(27,18)
 
+
+fuse = 'vis.ir'
+all_vi = load_phot(region='n159-all',fuse=fuse)
+
+fuse = 'vis'
+all_vis = load_phot(region='n159-all',fuse=fuse)
+
+fuse = 'ir'
+all_ir = load_phot(region='n159-all',fuse=fuse)
+
+
 plt.figure()
-plt.scatter(all_vi['555min814'],all_vi['mag_555'],s=2,alpha=0.5,c='k')
-plt.scatter(off_vi['555min814'],off_vi['mag_555'],s=0.2,alpha=0.5,c='r')
+plt.scatter(all_ir['125min160'],all_ir['mag_160'],s=2,alpha=0.5,c='k')
 plt.gca().invert_yaxis()
-plt.xlim(-0.1,2.5)
-plt.ylim(27,18)
+plt.xlabel('125 - 160')
+plt.ylabel('160')
+
+
+plt.figure()
+plt.scatter(all_ir['125min160'],all_ir['mag_125'],s=2,alpha=0.5,c='k')
+plt.gca().invert_yaxis()
+plt.xlabel('125 - 160')
+plt.ylabel('125')
+
+
+plt.figure()
+plt.scatter(all_vis['555min814'],all_vis['mag_814'],s=2,alpha=0.5,c='k')
+plt.gca().invert_yaxis()
+plt.xlabel('555 - 814')
+plt.ylabel('814')
+
+plt.figure()
+plt.scatter(all_vis['555min814'],all_vis['mag_555'],s=2,alpha=0.5,c='k')
+plt.gca().invert_yaxis()
+plt.xlabel('555 - 814')
+plt.ylabel('555')
+
+
 
 klim = (all_vi['555min814'] >= 0.9) &  (all_vi['555min814'] <= 2.5) & (all_vi['mag_555'] >= 18) & (all_vi['mag_555'] <= 22.5)
 plt.figure()

@@ -13,7 +13,8 @@ min_samples = 75
 x_pms = full['ra_814'][pms_inds]
 y_pms = full['dec_814'][pms_inds]
 
-'''neight = NearestNeighbors(n_neighbors=min_samples)
+'''
+neight = NearestNeighbors(n_neighbors=min_samples)
 nbrs = neight.fit(pd.DataFrame([x_pms,y_pms]).T)
 distances,inds = nbrs.kneighbors(pd.DataFrame([x_pms,y_pms]).T)
 distances = np.sort(distances,axis=0)

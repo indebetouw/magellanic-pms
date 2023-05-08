@@ -7,13 +7,20 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import wcs
 
-region="n159-e"
-shortregion = 'n159e'
-region_shortname = 'n159e'
+let = 'w'
+region="n159-"+let
+shortregion = 'n159'+let
+region_shortname = 'n159'+let
+
+
+region = 'off-point'
+shortregion = 'off'
+region_shortname ='off'
+
 
 #######################################################
-#filts=["f555w","f814w"]
-filts = ["f125w", "f160w"]
+filts=["f555w","f814w"]
+#filts = ["f125w", "f160w"]
 reload=False
 
 mag = 'col16'
@@ -26,16 +33,12 @@ y   = 'col4'
 otype = 'col11'
 crd = 'col10'
 
-ref_filt = '_f160ref' # '_f814ref'
+if filts ==  ["f125w", "f160w"]:
+    ref_filt = '_f160ref'
+if filts == ["f555w","f814w"]:
+        ref_filt = '_f814ref'
 
-#workdir="/Users/remy/cv/magellanic/n159/"
-
-#workdir = '/Users/toneill/N159/photometry/new/n159-e/n159-e-newoptical/'
 workdir = '/Users/toneill/N159/photometry/new/'+region+'/'
-
-#workdir = photdir+region+'/'+'n159-e-newoptical/'##.phot0/'
-
-#os.chdir(workdir+region+"/")
 os.chdir(workdir)
 
 
@@ -52,8 +55,13 @@ if reload:
         kind="flc"
         camera="acs"
         catfile = filt+"/"+region+"_"+filt+ref_filt
-        shpmax=0.27
-        crdmax=1
+
+        if filts == ["f555w","f814w"]:
+            shpmax=0.27
+            crdmax=1
+        if filts == ["f125w", "f160w"]:
+            shpmax = 0.34
+            crdmax = 1
         
         print(catfile)
         intab=Table.read(catfile,format="ascii")
@@ -110,67 +118,75 @@ if reload:
             match21[zz]=i
         pbar.update(1)
 
-
+    '''cat1 = SkyCoord(ra=c[filts[0]+"_ra"]*u.deg,dec=c[filts[0]+"_de"]*u.deg)
+    cat2 = SkyCoord(ra=c[filts[1]+"_ra"]*u.deg,dec=c[filts[1]+"_de"]*u.deg)
+    match , d2d, d3d = cat1.match_to_catalog_sky(cat2)
+    sep_crit = d2d < 0.2*u.arcsec
+    np.sum(sep_crit)
+    off_to = cat1.spherical_offsets_to(cat2[match])
+    plt.figure(figsize=(6,6))
+    plt.scatter(off_to[0],off_to[1],s=0.1,alpha=0.1)
+    plt.axvline(x=0,c='k')
+    plt.axhline(y=0,c='k')'''
 
 #------
-pl.figure()
-g=pl.gcf()
-g.set_size_inches(6,6)
 z=np.where(match12>=0)[0]
 c1=c[filts[0]]
 c2=c[filts[1]]
-
 if filts == ['f555w','f814w']:
-    '''z1=z[ np.where((c1[mag][z]<90)*(c2[mag][match12[z]]<90)*
-                   (c1[dmag][z]<0.1)*(c2[dmag][match12[z]]<0.1)
-                   #(np.absolute(c1[shp][z])<1)*(np.absolute(c2[shp][match12[z]])<1)*
-                   #(c1[rnd][z]<3)*(c2[rnd][match12[z]]<3)*
-                   #(c1[crd][z]<0.3)*(c2[crd][match12[z]]<0.3)*
-                   #(c1[otype][z]<3)*(c2[otype][match12[z]]<3)
-                  )[0] ]
+    '''z3 = z[np.where((c1[mag][z] < 90) * (c2[mag][match12[z]] < 90) *
+                (c1[snr][z] >= 10) * (c2[snr][match12[z]] >= 10) *
+                (np.absolute(c1[shp][z]) < 1) * (np.absolute(c2[shp][match12[z]]) < 1) *
+                (c1[rnd][z] < 3) * (c2[rnd][match12[z]] < 3) *
+                (c1[crd][z] < 0.3) * (c2[crd][match12[z]] < 0.3) *
+                (c1[otype][z] < 3) * (c2[otype][match12[z]] < 3))[0]]  # '''
 
-    z2=z[ np.where((c1[mag][z]<90)*(c2[mag][match12[z]]<90)*
-                   (c1[dmag][z]<0.1)*(c2[dmag][match12[z]]<0.1)*
-                   (c1[shp][z]<shpmax)*(c2[shp][match12[z]]<shpmax)*
-                   #(c1[rnd][z]<3)*(c2[rnd][match12[z]]<3)*
-                   (c1[crd][z]<crdmax)*(c2[crd][match12[z]]<crdmax)
-                   #(c1[otype][z]<3)*(c2[otype][match12[z]]<3)
-                  )[0] ]'''
-
-    z3=z[ np.where((c1[mag][z]<90)*(c2[mag][match12[z]]<90)*
-                   (c1[dmag][z]<0.1)*(c2[dmag][match12[z]]<0.1)*
-                   (np.absolute(c1[shp][z])<1)*(np.absolute(c2[shp][match12[z]])<1)*
-                   (c1[rnd][z]<3)*(c2[rnd][match12[z]]<3)*
-                   (c1[crd][z]<0.3)*(c2[crd][match12[z]]<0.3)*
-                   (c1[otype][z]<3)*(c2[otype][match12[z]]<3)
-                  )[0] ]
+    magmax1 = 28
+    magmax2 = 28
+    colormin = -1
+    colormax = 5
+    snrmin = 10
+    otypemax = 3
+    crdmax = 0.3
+    z3 = z[np.where((c1[mag][z] < magmax1) * (c2[mag][match12[z]] < magmax2) *
+                   (c1[mag][z]-c2[mag][match12[z]] > colormin)*
+                    (c1[mag][z] - c2[mag][match12[z]] < colormax)*
+                (c1[snr][z] >= snrmin) * (c2[snr][match12[z]] >= snrmin) *
+                    (c1[shp][z]**2 < 0.075) * (c2[shp][match12[z]]**2 < 0.075)*
+                    (c1[rnd][z] < 3) * (c2[rnd][match12[z]] < 3) *
+                (c1[crd][z] < crdmax) * (c2[crd][match12[z]] < crdmax) *
+                (c1[otype][z] < otypemax) * (c2[otype][match12[z]] < otypemax))[0]]
+    print(f'z3: {len(z3)}')
 
 if filts == ['f125w','f160w']:
+    snrmin = 10
+    crdmax = 0.3#48
+    otypemax = 3
+    colormin = -1
+    colormax = 5
+    magmax1 = 26
+    magmax2 = 26
+    z3 = z[np.where( (c1[mag][z] < magmax1) * (c2[mag][match12[z]] < magmax2) *
+                     (c1[mag][z] - c2[mag][match12[z]] > colormin) *
+                     (c1[mag][z] - c2[mag][match12[z]] < colormax) *
+                     (c1[snr][z] >= snrmin) * (c2[snr][match12[z]] >= snrmin) *
+           (c1[crd][z] < crdmax) * (c2[crd][match12[z]] < crdmax) *
+           (c1[shp][z]**2 < 0.12) * (c2[shp][match12[z]]**2 < 0.12)*
+                     (c1[otype][z]<otypemax)*(c2[otype][match12[z]]<otypemax)
+                 * (c1[rnd][z] < 3) * (c2[rnd][match12[z]] < 3)
+                     )[0] ]
+    print(f'z3: {len(z3)}')
 
-    z3 = z[np.where( (c1[mag][z] < 90) * (c2[mag][match12[z]] < 90) *
-                     (c1[snr][z] >= 10) * (c2[snr][match12[z]] >= 10) *
-           (c1[crd][z] <= 0.48) * (c2[crd][match12[z]] <= 0.48) *
-           (c1[shp][z] > -0.6) * (c2[shp][match12[z]] > -0.6))[0] ]
-
-
-#pl.plot(c1[mag][z1]-c2[mag][match12[z1]],c1[mag][z1],'.',label='all',markersize=0.5)
-
-#pl.plot(c1[mag][z2]-c2[mag][match12[z2]],c1[mag][z2],'.',label='PHAT',markersize=0.5)
-
-pl.plot(c1[mag][z3]-c2[mag][match12[z3]],c1[mag][z3],'.',label='RI',markersize=2)#,c='g',alpha=0.8)
-
+pl.figure(figsize=(6,6))
+pl.scatter(c1[mag][z3]-c2[mag][match12[z3]],c1[mag][z3],label='RI',s=1,alpha=0.5)
 pl.xlabel(filts[0] + "-" + filts[1])
 pl.ylabel(filts[0])
-if camera == "acs":
-    pl.xlim(-0.5, 3.5)
-    pl.ylim(29, 13)
-else:
-    pl.xlim(-0.5, 1.5)
-    pl.ylim(26, 13)
-
-pl.legend(loc="best", prop={"size": 10})
+pl.gca().invert_yaxis()
 pl.title(f'{region}')
 pl.tight_layout()
+pl.xlim(-1,5)
+pl.ylim(29,12)
+
 
 #################################################################
 c555_matches = c1[z3].to_pandas()
@@ -202,9 +218,8 @@ savephotdir = '/Users/toneill/N159/photometry/reduced/'
 
 cmatch_vi.to_csv(savephotdir+region+'_reduce_'+filts[0]+'_'+filts[1]+'.phot.csv',index=False)
 
-pl.figure()
-pl.scatter(cmatch_vi[shortfilts[0]+'min'+shortfilts[1]],cmatch_vi['mag_'+shortfilts[0]],s=0.5,c='r')
-pl.gca().invert_yaxis()
+
+
 
 
 #################################################################
@@ -216,33 +231,93 @@ from astropy import units as u
 import matplotlib.pyplot as plt
 import numpy as np
 
-region = 'n159-e'
+region = 'off-point'
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
 finphotdir = '/Users/toneill/N159/photometry/FINAL_PHOT/'+region+'/'
 
-vi_df = pd.read_csv(savephotdir+region+'_reduce.phot.csv')
+vi_df = pd.read_csv(savephotdir + region + '_reduce_f555w_f814w.phot.csv')
+vi_df = vi_df.rename(columns={'ra_f555w':'ra_555','dec_f555w':'dec_555',
+                              'ra_f814w':'ra_814','dec_f814w':'dec_814'})
+#else:
+#    vi_df = pd.read_csv(savephotdir+region+'_reduce.phot.csv')
 ir_df = pd.read_csv(savephotdir+region+'_reduce_f125w_f160w.phot.csv')
 ## rename ir position names
 ir_df = ir_df.rename(columns={'ra_f125w':'ra_125','dec_f125w':'dec_125',
                               'ra_f160w':'ra_160','dec_f160w':'dec_160'})
+#ir_df = ir_df[(ir_df['crd_160']<0.3)&(ir_df['crd_125']<0.3)]
+print(f'vi: {len(vi_df)}')
+print(f'ir: {len(ir_df)}')
+
+print(len(ir_df)/len(vi_df))
+
 
 c814 = SkyCoord(ra=vi_df['ra_814'] * u.deg, dec=vi_df['dec_814'] * u.deg)
 c160 = SkyCoord(ra=ir_df['ra_160'] * u.deg, dec=ir_df['dec_160'] * u.deg)
 
-max_sep = 0.5* u.arcsec
+max_sep = 0.2* u.arcsec
+
+'''
 idx, d2d, d3d = c814.match_to_catalog_sky(c160)
 sep_constraint = d2d < max_sep
-print(np.sum(sep_constraint))
+print(f'match: {np.sum(sep_constraint)}')
 c814_matches = vi_df[sep_constraint].reset_index()
 c160_matches = ir_df.iloc[idx[sep_constraint]].reset_index()
 cmatch_irvi = c160_matches.join(c814_matches,lsuffix='_ir',rsuffix='_vis')
+'''
+
+idx, d2d, d3d = c160.match_to_catalog_sky(c814)
+sep_constraint = d2d < max_sep
+print(f'match: {np.sum(sep_constraint)}')
+
+c814_matches = vi_df.iloc[idx[sep_constraint]].reset_index()
+c160_matches = ir_df[sep_constraint].reset_index()
+cmatch_irvi = c160_matches.join(c814_matches,lsuffix='_ir',rsuffix='_vis')
+
+print(len(cmatch_irvi))
+#print(len(cmatch_irvi[cmatch_irvi['rnd_125']<3])/len(c160[ir_df['rnd_125']<3]))
+print(len(np.unique(idx[sep_constraint]))/np.sum(sep_constraint))
+print(len(cmatch_irvi)/len(c160))
+
+
+
+len(np.unique(idx[sep_constraint]))
 
 cmatch_irvi.to_csv(finphotdir+region+'_phot_vis.ir.csv',index=False)
 vi_df.to_csv(finphotdir+region+'_phot_vis.csv',index=False)
 ir_df.to_csv(finphotdir+region+'_phot_ir.csv',index=False)
 
 
+#############
+off_to = c160.spherical_offsets_to(c814[idx])
+
+plt.figure(figsize=(6,6))
+plt.scatter(off_to[0],off_to[1],c='royalblue',s=0.2,zorder=0)
+plt.scatter(off_to[0][sep_constraint],off_to[1][sep_constraint],c='r',s=0.2,zorder=2)
+plt.title(f'{region}')
+plt.axvline(x=0,c='k')
+plt.axhline(y=0,c='k')
+
+plt.figure()
+plt.scatter(cmatch_irvi['555min814'],cmatch_irvi['mag_555'],s=0.5)
+plt.gca().invert_yaxis()
+
+plt.figure()
+plt.scatter(cmatch_irvi['125min160'],cmatch_irvi['mag_160'],s=0.5)
+plt.gca().invert_yaxis()
+
+#######
+
+old_vdf= pd.read_csv(finphotdir+region+'_phot_vis.csv')
+old_irdf= pd.read_csv(finphotdir+region+'_phot_ir.csv')
+old_wdf = pd.read_csv(finphotdir+region+'_phot_vis.ir.csv')
+plt.figure()
+plt.scatter(old_wdf['555min814'],old_wdf['mag_555'],s=0.5)
+plt.gca().invert_yaxis()
+
+
 ###################################################
+############## MATCH N159E AND W
+
 
 region = 'n159-all'
 savephotdir2 = '/Users/toneill/N159/photometry/FINAL_PHOT/'
@@ -255,13 +330,14 @@ fuse = 'vis.ir'
 edf = pd.read_csv(savephotdir2+'n159-e/'+f'n159-e_phot_{fuse}.csv')
 wdf = pd.read_csv(savephotdir2+'n159-w/'+f'n159-w_phot_{fuse}.csv')
 sdf = pd.read_csv(savephotdir2+'n159-s/'+f'n159-s_phot_{fuse}.csv')
-#alldf =pd.read_csv(finphotdir+region+f'_phot_{fuse}.csv')
+alldf =pd.read_csv(finphotdir+region+f'_phot_{fuse}.csv')
 
 print(f'\n {fuse}')
 print(f'E: {len(edf)}')
 print(f'W: {len(wdf)}')
 print(f'S: {len(sdf)}')
-print(f'All: {len(alldf)}')
+print(f'All, repeats: {len(edf)+len(wdf)+len(sdf)}')
+#print(f'All: {len(alldf)}')
 
 
 
@@ -274,7 +350,7 @@ cfilt = cfilts[fuse]
 ce = SkyCoord(ra=edf[f'ra_{cfilt}'] * u.deg, dec=edf[f'dec_{cfilt}'] * u.deg)
 cw = SkyCoord(ra=wdf[f'ra_{cfilt}'] * u.deg, dec=wdf[f'dec_{cfilt}'] * u.deg)
 
-max_sep = 0.2* u.arcsec
+max_sep =0.2* u.arcsec
 idx, d2d, d3d = cw.match_to_catalog_sky(ce)
 sep_constraint = d2d < max_sep
 print(np.sum(sep_constraint))
@@ -298,7 +374,106 @@ wdf.to_csv(savephotdir2+'n159-w/'+f'n159-w_phot_{fuse}.csv',index=False)
 
 
 
+##############################
+##############################################
+##############################################
 
+region = 'n159-all'
+finphotdir = '/Users/toneill/N159/photometry/FINAL_PHOT/'+region+'/'
+
+all_vis=pd.read_csv(finphotdir+region+f'_phot_vis.csv')
+all_ir=pd.read_csv(finphotdir+region+f'_phot_ir.csv')
+
+cfilt1 = '814'
+cfilt2 = '160'
+ce = SkyCoord(ra=all_vis[f'ra_{cfilt1}'] * u.deg, dec=all_vis[f'dec_{cfilt1}'] * u.deg)
+cw = SkyCoord(ra=all_ir[f'ra_{cfilt2}'] * u.deg, dec=all_ir[f'dec_{cfilt2}'] * u.deg)
+
+max_sep =0.5* u.arcsec
+idx, d2d, d3d = cw.match_to_catalog_sky(ce)
+sep_constraint = d2d < max_sep
+print(np.sum(sep_constraint))
+
+off_to = cw.spherical_offsets_to(ce[idx])
+
+plt.figure(figsize=(6,6))
+plt.scatter(off_to[0],off_to[1],c='royalblue',s=0.2,zorder=0)
+plt.scatter(off_to[0][sep_constraint],off_to[1][sep_constraint],c='orange',s=0.2,zorder=1)
+plt.title(f'{region}')
+plt.axvline(x=0,c='k')
+plt.axhline(y=0,c='k')
+
+
+#all_vi = load_phot(region='n159-all',fuse='vis.ir')
+
+
+
+
+
+##############################################
+##############################################
+##############################################
+from sklearn.cluster import DBSCAN
+
+# set up plotting colors for dbscan
+colors = ['royalblue', 'tab:orange', 'orangered', 'tab:red', 'm', \
+          'hotpink', 'tab:cyan', 'tab:purple', 'gold',
+          'limegreen', 'deeppink', 'slateblue','maroon','cornflowerblue',
+          'firebrick','navy',  'r', 'darkgrey']
+vectorizer = np.vectorize(lambda x: colors[x % len(colors)])
+
+min_samples = 1000
+eps= 9e-6
+
+from sklearn.neighbors import NearestNeighbors
+
+x = off_to[0].value
+y = off_to[1].value
+
+neight = NearestNeighbors(n_neighbors=min_samples)
+nbrs = neight.fit(pd.DataFrame([x,y]).T)
+distances,inds = nbrs.kneighbors(pd.DataFrame([x,y]).T)
+distances = np.sort(distances,axis=0)
+#distances = distances[:,1]
+
+# Choose approximate point where curve becomes smooth - currently
+# by eye, could be improved
+plt.figure()
+plt.plot(distances[:,1])#,marker='v',markersize=3)
+plt.xlabel('Source Number')
+plt.ylabel('Nearest Neighbor Distance')
+plt.title('Nearest Neighbor Distances of Sources')
+
+
+def run_dbscan(x,y,min_samples=100,eps=0.005):
+    m = DBSCAN(eps=eps,min_samples=min_samples)
+    m.fit(pd.DataFrame([x,y]).T)
+    clusters = m.labels_
+    #print(np.unique(clusters))
+    print(len(np.unique(clusters)))
+
+    fig = plt.figure(figsize=(6,6))#figsize=(13.5, 6.5))
+    ax = fig.add_subplot(111)
+    s = ax.scatter(x,y,   c = vectorizer(clusters), s = 0.5)
+    ax.axvline(x=0, c='k')
+    ax.axhline(y=0, c='k')
+
+    return clusters
+
+
+clus = run_dbscan(off_to[0].value,off_to[1].value,min_samples=5000,eps=4e-6)
+print(np.sum(clus!=-1))
+
+match_clus =np.where( clus==0)[0]
+np.mean([off_to[0].value[match_clus],off_to[1].value[match_clus]],axis=1)
+
+
+
+
+
+
+##############################################
+##############################################
 ##############################################
 
 
@@ -317,9 +492,11 @@ plt.axhline(y=1,c='grey')
 
 
 
-
-
-
+plt.figure()
+useinds = all_vi['region'] == 'n159w'
+plt.scatter(all_vi['ra_814'][useinds],all_vi['dec_814'][useinds],alpha=1,s=1,c='b')
+useinds = all_vi['region'] == 'n159e'
+plt.scatter(all_vi['ra_814'][useinds],all_vi['dec_814'][useinds],alpha=0.3,c='orange',s=1)
 
 
 ###
