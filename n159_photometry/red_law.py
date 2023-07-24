@@ -11,13 +11,20 @@ from load_data import load_phot
 import statsmodels.api as sm
 import os
 
+
+def model_valid(model,*random_data) -> bool:
+    return model.coef_[0] > 0
+
 def ransac_nointercept(X, y,fit_int=False):
     ransac = linear_model.RANSACRegressor(max_trials=1000,
-                                          base_estimator=linear_model.LinearRegression(fit_intercept=fit_int))
+              base_estimator=linear_model.LinearRegression(fit_intercept=fit_int),
+                                          is_model_valid=model_valid)
     ransac.fit(X, y)
     inlier_mask = ransac.inlier_mask_
     m, c = float(ransac.estimator_.coef_), float(ransac.estimator_.intercept_)
     return [m, c, inlier_mask * 1]
+
+e_ir = red_curv(e_vi,col_use='125min160',plot=True,nrun=500,region='e')
 
 cmap_use = cmr.get_sub_cmap('inferno', 0, 0.9)
 
@@ -47,60 +54,6 @@ s_vi = load_phot(region='n159-s',fuse=fuse)
 off_vi = load_phot(region='off-point',fuse=fuse)
 region_dicts = {'n159e':e_vi,'n159w':w_vi,'n159s':s_vi,'all':all_vi,'off':off_vi}
 
-'''plt.figure()
-plt.scatter(off_vi['555min814'],off_vi['mag_555'],s=2,alpha=0.5,c='k')
-plt.gca().invert_yaxis()
-plt.xlim(-0.1,2.5)
-plt.ylim(27,18)
-
-
-fuse = 'vis.ir'
-all_vi = load_phot(region='n159-all',fuse=fuse)
-
-fuse = 'vis'
-all_vis = load_phot(region='n159-all',fuse=fuse)
-
-fuse = 'ir'
-all_ir = load_phot(region='n159-all',fuse=fuse)
-
-
-plt.figure()
-plt.scatter(all_ir['125min160'],all_ir['mag_160'],s=2,alpha=0.5,c='k')
-plt.gca().invert_yaxis()
-plt.xlabel('125 - 160')
-plt.ylabel('160')
-
-
-plt.figure()
-plt.scatter(all_ir['125min160'],all_ir['mag_125'],s=2,alpha=0.5,c='k')
-plt.gca().invert_yaxis()
-plt.xlabel('125 - 160')
-plt.ylabel('125')
-
-
-plt.figure()
-plt.scatter(all_vis['555min814'],all_vis['mag_814'],s=2,alpha=0.5,c='k')
-plt.gca().invert_yaxis()
-plt.xlabel('555 - 814')
-plt.ylabel('814')
-
-plt.figure()
-plt.scatter(all_vis['555min814'],all_vis['mag_555'],s=2,alpha=0.5,c='k')
-plt.gca().invert_yaxis()
-plt.xlabel('555 - 814')
-plt.ylabel('555')
-
-
-
-klim = (all_vi['555min814'] >= 0.9) &  (all_vi['555min814'] <= 2.5) & (all_vi['mag_555'] >= 18) & (all_vi['mag_555'] <= 22.5)
-plt.figure()
-#hist = sns.histplot(all_vi[klim],x='555min814',y='mag_555',kde=True)
-sns.kdeplot(x=all_vi['555min814'][klim],y=all_vi['mag_555'][klim],fill=True,cut=0)
-plt.gca().invert_yaxis()
-#plt.scatter(all_vi['555min814'],all_vi['mag_555'],s=2,alpha=0.5,c='k')
-plt.xlim(0.8,2.5)
-plt.ylim(23,19)'''
-
 ########
 # define filter props
 
@@ -120,13 +73,17 @@ for i in range(len(filts_rep)):
 # define expected center and boundaries of RC
 
 ### NOTE: RIGHT NOW, EXPECTED FOR 125 and 160 ARE BY EYE
-exp_cols = {'555min814':0.925,'125min160':0.4}
-exp_mags = {'mag_555':19.07,'mag_814':18.14,'mag_125':17.65,'mag_160':17.2}
+#exp_cols = {'555min814':0.925,'125min160':0.4}
+exp_mags = {'mag_555':19.16,'mag_814':18.10,'mag_125':17.69,'mag_160':17.25}
+exp_cols = {'555min814':exp_mags['mag_555']-exp_mags['mag_814'],'125min160':exp_mags['mag_125']-exp_mags['mag_160']}
 
-col_bounds = {'555min814':[0.85,2.5],'125min160':[0.35,1]}
-mag_bounds = {'mag_555':[18.5,22],'mag_814':[17.5,21],'mag_125':[16.5,19],'mag_160':[16.5,19]}
+col_bounds = {'555min814':[0.8,2.5],'125min160':[0.35,2]}
+mag_bounds = {'mag_555':[18.5,22.5],'mag_814':[17.5,21.5],'mag_125':[16.5,20.5],'mag_160':[16.5,20.5]}
 
 
+plt.figure()
+plt.scatter(all_vi['125min160'],all_vi['mag_160'],s=3)
+plt.gca().invert_yaxis()
 ##############################################
 # function to fit rc slope
 
@@ -184,39 +141,129 @@ def red_curv(r_df,col_use='555min814',plot=False,nrun=500,region='all'):
         col_slopes[m][1] = np.std(m_dist)
         col_slopes[m][2] = inv_lams[mag_use]
 
-        #c_int = np.mean(c_dist)
-
-        rc_df.to_csv(f'redclump_cands/rc_{region}_{col_use}_{mag_use}.csv',index=False)
+        #rc_df.to_csv(f'redclump_cands/rc_{region}_{col_use}_{mag_use}.csv',index=False)
 
         if plot:
             ax = axs[m]
             ax.scatter(r_df[col_use],r_df[mag_use],c='gray',s=1.5,alpha=0.3)
             ax.scatter(rc_df[col_use],rc_df[mag_use],c=rc_df['P_rc'],cmap=cmap_use,s=0.8,alpha=1,
                        label='$R_{\\lambda} =$ '+f'{col_slopes[m][0]:.2f} $\\pm$ {col_slopes[m][1]:.2f}')
-            ax.set_xlabel(col_use,fontsize=13)
-            ax.set_ylabel(mag_use,fontsize=14)
-
+            ax.set_xlabel(f'F{col_use[0:3]}W - F{col_use[6::]}W [mag]', fontsize=12)
+            ax.set_ylabel(f'F{mag_use[4::]}W [mag]', fontsize=12)
             exp_col = exp_cols[col_use]
             exp_mag = exp_mags[mag_use]
+            if col_use == '125min160':
+                exp_col = 0.54
+            if mag_use == 'mag_160':
+                exp_mag = 17.15
             ax.scatter(exp_col,exp_mag,edgecolor='r',facecolor='None',marker='s',alpha=0.5,label='Expected RC')
             #ax.scatter(exp_col,exp_mag+c_int,edgecolor='b',facecolor='None',marker='o',alpha=0.5,label='Fit RC')
             ax.legend(loc='lower right')
 
     if plot:
         if col_use == '125min160':
-            ax.set_xlim(-0.5,2)
+            ax.set_xlim(-0.5,3)
         if col_use == '555min814':
-            ax.set_xlim(-0.5,4)
-        ax.set_ylim(27, 16)
+            ax.set_xlim(-0.5,3)
+        ax.set_ylim(28, 16)
         fig.tight_layout()
         #plt.savefig(f'cmd_{region}_{col_use}.png',dpi=300)
         plt.savefig(f'rcfit_{region}_{col_use}.png',dpi=300)
     return col_slopes
 
+#################################################
+#################################################
+#################################################
+
+plot = True
+region = 'n159s'
+v_df = load_phot(region='n159-s',fuse='vis')
+ir_df = load_phot(region='n159-s',fuse='ir')
+vir_df = load_phot(region='n159-s',fuse='vis.ir')
+
+two_dict = {poss_cols[0]:v_df,poss_cols[1]:ir_df}
+
+nrun = 1000
+
+col_slopes = np.full((len(poss_mags), 3), np.nan)
+
+fig, axs = plt.subplots(2,4, figsize=(16, 8))
+axs = axs.ravel()
+for m in range(len(poss_mags)):
+    print(m)
+
+    mag_use = poss_mags[m]
+    if mag_use in two_dict[col_use].columns:
+        r_df = two_dict[col_use]
+    else:
+        r_df = vir_df
+
+    rc_df, m_dist, c_dist = fit_rc(r_df, col_use=col_use, mag_use=mag_use, nrun=nrun)
+
+    col_slopes[m][0] = np.median(m_dist)
+    col_slopes[m][1] = np.std(m_dist)
+    col_slopes[m][2] = inv_lams[mag_use]
+    intercept = np.median(c_dist)
+
+    if plot:
+        ax = axs[m]
+        ax.scatter(rc_df[col_use], rc_df[mag_use], c=rc_df['P_rc'], cmap=cmap_use, s=4, alpha=1,vmin=0,vmax=1    )
+        ax.set_xlabel(f'F{col_use[0:3]}W - F{col_use[6::]}W [mag]', fontsize=12)
+        ax.set_ylabel(f'F{mag_use[4::]}W [mag]', fontsize=12)
+        exp_col = exp_cols[col_use]
+        exp_mag = exp_mags[mag_use]
+
+        line_X = np.linspace(col_bounds[col_use][0]-exp_col,col_bounds[col_use][1]-exp_col, 100)  # X0.min(), X0.max() - 0.5, 0.05)  # [:, np.newaxis]
+        line_Y = col_slopes[m][0] * line_X +  exp_mag
+        luse = line_Y < mag_bounds[mag_use][1]
+        line_Y = line_Y[luse]
+        lineX_plot = line_X[luse] + exp_col
+        arrprop = dict(arrowstyle="-|>,head_width=0.4,head_length=0.8",
+                    shrinkA=0, shrinkB=0,color='firebrick',lw=2)
+        ax.annotate("", xy=(lineX_plot[-1],line_Y[-1]),
+                                    xytext=(lineX_plot[0],line_Y[0]), arrowprops=arrprop,zorder=6)
+        ax.plot(lineX_plot,line_Y,c='white',
+                    label= '$R_{\\lambda} =$ ' + f'{col_slopes[m][0]:.2f} $\\pm$ {col_slopes[m][1]:.2f}')
+
+        if col_use == '125min160':
+            exp_col = 0.54
+        if mag_use == 'mag_160':
+            exp_mag = 17.15
+        ax.scatter(exp_col, exp_mag, edgecolor='r', facecolor='None', marker='8', s=300,alpha=0.8)#, label='Expected RC')
+        ax.legend(loc='upper right')
+        ax.set_xlim(col_bounds[col_use][0],col_bounds[col_use][1])
+        ax.set_ylim(mag_bounds[mag_use][1], mag_bounds[mag_use][0])
+
+
+
+        fig.tight_layout()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##################################################
 clobber = True
 
 if clobber:
-    nrun = 1000
+    nrun = 500
 
     rvs_vis = red_curv(all_vi,col_use='555min814',plot=True,nrun=nrun)
     rvs_ir = red_curv(all_vi,col_use='125min160',plot=True,nrun=nrun)
@@ -244,7 +291,7 @@ plt.figure()
 plt.errorbar(rvs_vis[:,2],rvs_vis[:,0],yerr=rvs_vis[:,1],label='N159',c='cornflowerblue',zorder=5,**lprops)
 '''plt.errorbar(e_vis[:,2],e_vis[:,0],yerr=e_vis[:,1],label='N159E',c='#ed6495',ls=':',**lprops)#,markersize=1)
 plt.errorbar(w_vis[:,2],w_vis[:,0],yerr=w_vis[:,1],label='N159W',ls=':',c='#edbc64',**lprops)
-plt.errorbar(s_vis[:,2],s_vis[:,0],yerr=s_vis[:,1],label='N159S',ls=':',c='#7864ed',**lprops)'''
+plt.errorbar(s_vis[:,2],s_vis[:,0],yerr=s_vis[:,1],label='N159S',ls=':',c='#7864ed',**lprops)#'''
 plt.errorbar(off_vis[:,2],off_vis[:,0],yerr=off_vis[:,1],label='Off',ls=':',c='r',**lprops)
 plt.gca().set_xscale('log')
 plt.errorbar(r136_invlam,r136_r57,yerr=r136_r57_err,capsize=2,marker='d',ls='None',label='30Dor (F555W - F775W)',c='gray')
@@ -254,14 +301,14 @@ plt.ylabel('$A_\\lambda$/ E(F555W - F814W)',fontsize=14)
 plt.xlabel('1/$\\lambda$ [$\\mu$m$^{-1}$]',fontsize=14)
 plt.title(f'Color: F555W - F814W')
 plt.tight_layout()
-#plt.savefig('rv.curv_555min814.png',dpi=300)
-plt.savefig('rv.curv_zoom_off_555min814.png',dpi=300)
+plt.savefig('rv.curv_555min814.png',dpi=300)
+#plt.savefig('rv.curv_zoom_off_555min814.png',dpi=300)
 
 plt.figure()
 plt.errorbar(rvs_ir[:,2],rvs_ir[:,0],yerr=rvs_ir[:,1],label='N159',c='cornflowerblue',zorder=5,**lprops)
-plt.errorbar(e_ir[:,2],e_ir[:,0],yerr=e_ir[:,1],label='N159E',ls=':',c='#ed6495',**lprops)
+'''plt.errorbar(e_ir[:,2],e_ir[:,0],yerr=e_ir[:,1],label='N159E',ls=':',c='#ed6495',**lprops)
 plt.errorbar(w_ir[:,2],w_ir[:,0],yerr=w_ir[:,1],label='N159W',ls=':',c='#edbc64',**lprops)
-plt.errorbar(s_ir[:,2],s_ir[:,0],yerr=s_ir[:,1],label='N159S',ls=':',c='#7864ed',**lprops)
+plt.errorbar(s_ir[:,2],s_ir[:,0],yerr=s_ir[:,1],label='N159S',ls=':',c='#7864ed',**lprops)'''
 plt.errorbar(off_ir[:,2],off_ir[:,0],yerr=off_ir[:,1],label='Off',ls=':',c='r',**lprops)
 plt.gca().set_xscale('log')
 plt.errorbar(r136_invlam,r136_r092,yerr=r136_r092_err,capsize=2,marker='d',ls='None',label='30Dor (F090W - F200W)',c='gray')
@@ -338,7 +385,7 @@ plt.ylabel('Ratio $R_\\lambda$ / MW',fontsize=14)
 plt.xlabel('1/$\\lambda$ [$\\mu$m$^{-1}$]',fontsize=14)
 plt.title(f'Color: V - I')
 plt.tight_layout()
-plt.ylim(0.5,2.3)
+plt.ylim(0.5,2.8)
 plt.axhline(y=1,c='k',ls='--')
 plt.savefig('rv.curv_ratio_VminI.png',dpi=300)
 
@@ -354,7 +401,7 @@ plt.ylabel('Ratio $R_\\lambda$ / MW',fontsize=14)
 plt.xlabel('1/$\\lambda$ [$\\mu$m$^{-1}$]',fontsize=14)
 plt.title(f'Color: V - I')
 plt.tight_layout()
-plt.ylim(0.5,2.2)
+plt.ylim(0.5,3)
 plt.axhline(y=1,c='k',ls='--')
 plt.savefig('rv.curv_ratio_N159only_VminI.png',dpi=300)
 

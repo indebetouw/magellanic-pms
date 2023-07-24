@@ -8,20 +8,20 @@ from astropy import units as u
 artpop.get_filter_names('HST_WFC3')
 filts_use = ['WFC3_UVIS_F555W','WFC3_UVIS_F775W',
              'WFC3_UVIS_F814W','WFC3_IR_F110W',
-             'WFC3_IR_F125W','WFC3_IR_F160W','ACS_WFC_F550M',
+             'WFC3_IR_F125W','WFC3_IR_F160W',#'ACS_WFC_F550M',
             'Bessell_V','Bessell_I','2MASS_J','2MASS_H','2MASS_Ks']
 
 if fit_trans:
     popprops = {'feh':-0.30, 'phot_system':['HST_WFC3','HST_ACSWF','UBVRIplus'],
                 'imf':'kroupa','distance':50*u.kpc,
-                'num_stars':1e4,'mag_limit':27,'mag_limit_band':'WFC3_UVIS_F555W'}#,'a_lam':0.3}
+                'num_stars':1e4,'mag_limit':28,'mag_limit_band':'WFC3_UVIS_F555W'}#,'a_lam':0.3}
 
     age_range = np.logspace(np.log10(5e5),7,10)
 
 if gen_train:
     popprops = {'feh': -0.30, 'phot_system': 'HST_WFC3',
                 'imf': 'kroupa', 'distance': 50 * u.kpc,
-                'num_stars': 1e4, 'mag_limit': 27, 'mag_limit_band': 'WFC3_UVIS_F555W'}  # ,'a_lam':0.3}
+                'num_stars': 1e4, 'mag_limit': 28, 'mag_limit_band': 'WFC3_UVIS_F555W'}  # ,'a_lam':0.3}
 
     age_range = np.logspace(np.log10(5e5), 10, 15)
 
@@ -60,6 +60,8 @@ m160 = ssp.star_mags(filts_use[5])
 #m550 = ssp.star_mags(filts_use[6])
 col_57 = m555 - m775
 col_58 = m555 - m814
+col_26 = m125 - m160
+col_16 = m110 - m160
 
 
 mag5 = add_noise(m555,mu=mu,sigma=sigma)
@@ -70,15 +72,16 @@ mag2 = add_noise(m125,mu=mu,sigma=sigma)
 mag6 = add_noise(m160,mu=mu,sigma=sigma)
 #mag550 = add_noise(m550,mu=mu,sigma=sigma)
 
-
 c_57 = mag5 - mag7
 c_58 = mag5 - mag8
+c_26 = mag2 - mag6
+c_16 = mag1 - mag6
 
 popdf = pd.DataFrame({'phase':phases,'agegroup':ssp.ssp_labels,
                       'F555Wmag0':m555,'F775Wmag0':m775,'F814Wmag0':m814,
-                      'F110Wmag0':m110,'F125Wmag0':m125,'F160Wmag0':m160,'F550Nmag0':m550,
+                      'F110Wmag0':m110,'F125Wmag0':m125,'F160Wmag0':m160,#'F550Nmag0':m550,
                       'F555Wmag': mag5, 'F775Wmag': mag7, 'F814Wmag': mag8,
-                      'F110Wmag': mag1, 'F125Wmag': mag2, 'F160Wmag': mag6,'F550Nmag':mag550  })
+                      'F110Wmag': mag1, 'F125Wmag': mag2, 'F160Wmag': mag6})#,'F550Nmag':mag550  })
 popdf.to_csv('/Users/toneill/N159/isochrones/artpop_df.csv',index=False)#_noisy
 #popdf.to_csv('/Users/toneill/N159/isochrones/artpop_trim_train_df.csv',index=False)#_noisy
 
@@ -95,15 +98,20 @@ plt.tight_layout()
 #PMS = ssp.select_phase('PMS')
 unique_phases = np.unique(phases)
 plt.figure(figsize=(6,7))
-for phase in unique_phases:
+for phase in unique_phases[(unique_phases != 'PMS')]:
     pphase = phases == phase
-    plt.scatter(c_57[pphase],mag5[pphase], s=1, label=phase,alpha=0.5)
+    plt.scatter(c_58[pphase],mag5[pphase], s=5, label=phase,alpha=1)
 plt.legend()
 plt.gca().invert_yaxis()
 plt.tight_layout()
-plt.xlabel('555 - 775')
+plt.xlabel('555 - 814')
 plt.ylabel('555')
 #plt.savefig('artpop_phase_cmd.png',dpi=300)
+
+
+
+
+
 
 
 is_pms = phases == 'PMS'
@@ -113,15 +121,18 @@ cmap_use = cmr.get_sub_cmap('inferno', 0, 0.9)  # cmr.ember, 0.2, 0.8)
 
 
 plt.figure(figsize=(6,7))
-plt.scatter(c_57,mag5, s=0.5,c=is_pms,alpha=0.3,cmap=cmap_use)
+plt.scatter(c_26,mag2, s=0.5,c=is_pms,alpha=0.3,cmap=cmap_use)
 plt.gca().invert_yaxis()
 plt.tight_layout()
-plt.xlabel('555 - 775')
-plt.ylabel('555')
+plt.xlabel('125 - 160')
+plt.ylabel('125')
 plt.tight_layout()
 #plt.savefig('artpop_train_cmd.png',dpi=300)
 
 
+plt.figure()
+plt.scatter(m110,m125)
+plt.plot([9,26],[9,26],c='k')
 
 ########################################################################################
 ## using results of r regression
@@ -153,23 +164,38 @@ plt.xlabel('[ mag ] / m775')
 ############################################
 
 plt.figure(figsize=(6,6))
-plt.scatter(m775,m814,c='k',s=2)
-#plt.gca().invert_yaxis()
-plt.xlabel('775')
-plt.ylabel('814')
+plt.scatter(c_16,m110,c='k',s=0.1)
+plt.gca().invert_yaxis()
+
+crit = (m110>0)#(m110 >= 17.6-1)&(m110 <= 17.6+1) #& (c_16 >= -0.25) #& (c_16 <= 0.7)
 
 
 import statsmodels.api as sm
 
-x = m775
+x = m110[crit]
 X = sm.add_constant(x)
-y = m814
+y = m125[crit]
 model = sm.OLS(y,X)
 results = model.fit()
 results.summary()
 
+yrc_110 = 17.6
+yrc_125 = results.params[1]*yrc_110 + results.params[0]
+print(f'{yrc_125:.2f}')
+
+yrc_160 = 17.03
+print(f'{yrc_125-yrc_160:.2f}')
+
+
+
+
+
+plt.scatter(x,y)
+
 Xnew = np.linspace(np.min(x),np.max(x),1000)
 ynewpred = results.params[1]*Xnew + results.params[0]
+
+
 
 plt.figure()
 plt.scatter(x,y,c='cornflowerblue',s=2)

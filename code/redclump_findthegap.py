@@ -25,13 +25,11 @@ s_vi = load_phot(region='n159-s',fuse=fuse)
 off_vi = load_phot(region='off-point',fuse=fuse)
 region_dicts = {'n159e':e_vi,'n159w':w_vi,'n159s':s_vi,'all':all_vi,'off':off_vi}
 
-### NOTE: RIGHT NOW, EXPECTED FOR 125 and 160 ARE BY EYE
-exp_cols = {'555min814':0.925,'125min160':0.4}
-exp_mags = {'mag_555':19.07,'mag_814':18.14,'mag_125':17.65,'mag_160':17.2}
+exp_mags = {'mag_555':19.16,'mag_814':18.10,'mag_125':17.69,'mag_160':17.25}
+exp_cols = {'555min814':exp_mags['mag_555']-exp_mags['mag_814'],'125min160':exp_mags['mag_125']-exp_mags['mag_160']}
 
-col_bounds = {'555min814':[0.85,2.5],'125min160':[0.35,1]}
-mag_bounds = {'mag_555':[18.5,22.75],'mag_814':[17.5,21],'mag_125':[16.5,19],'mag_160':[16.5,19]}
-
+col_bounds = {'555min814':[0.8,2.5],'125min160':[0.35,2]}
+mag_bounds = {'mag_555':[18.5,22],'mag_814':[17.5,21.5],'mag_125':[16.5,20.5],'mag_160':[16.5,20.5]}
 
 def bounds_rc(r_df,col_use='555min814',mag_use='mag_555'):
 
@@ -47,21 +45,13 @@ def bounds_rc(r_df,col_use='555min814',mag_use='mag_555'):
 
     return rc_df
 
-region = 'off'
+region = 'n159s'
 all_rc = bounds_rc(region_dicts[region])
 data_nonorm = all_rc[['555min814','mag_555']].values
 
-
-plt.figure(figsize=(8,7))
-plt.scatter(data_nonorm[:,0],data_nonorm[:,1],c='grey',s=0.5)
-plt.gca().invert_yaxis()
-plt.title(f'{region}')
-
-
-
 scaler = StandardScaler()
 scaler.fit(data_nonorm)
-data = scaler.transform(data_nonorm)
+data =scaler.transform(data_nonorm)
 
 # Boundaries for the Gapper (if none are provided, this is the default mode)
 bounds = np.array([[np.min(data[:,d]),np.max(data[:,d])] for d in range(data.shape[1])])
@@ -81,17 +71,18 @@ grid_linspace = [ np.linspace(bounds[d][0], bounds[d][1], gridding_size) for d i
 meshgrid = np.array(np.meshgrid(*grid_linspace, indexing='ij'))
 
 plt.figure(figsize=(8,7))
-ctf = plt.contourf(meshgrid[0], meshgrid[1], density_matr, 20, cmap=cm.cividis)
+ctf = plt.contourf(meshgrid[0], meshgrid[1], density_matr, 40, cmap=cm.inferno)
 cb = plt.colorbar(label='Density estimate')
 plt.gca().invert_yaxis()
 plt.title(f'{region}')
-plt.contour(off_mgrid[0], off_mgrid[1], off_densmatr, 20,cmap=cm.plasma,label='off')
-plt.legend()
+#plt.contour(meshgrid[0], meshgrid[1], density_matr, 20, colors='white')
+#plt.contour(off_mgrid[0], off_mgrid[1], off_densmatr, 20,cmap=cm.plasma,label='off')
+#plt.legend()
 
 
-import copy
-off_mgrid =copy.deepcopy(meshgrid)
-off_densmatr = copy.deepcopy(density_matr)
+#import copy
+#off_mgrid =copy.deepcopy(meshgrid)
+#off_densmatr = copy.deepcopy(density_matr)
 #############
 
 
@@ -166,8 +157,7 @@ cb = fig.colorbar(critsc, ax=axs[1], label='Maximum eigenvalue of Hessian')
 
 
 
-N = 20
-
+N = 15
 idx_best_crits  = np.argsort(max_eigval_H)[::-1][:N]
 
 paths_best_crits = []
@@ -177,6 +167,21 @@ for crit in critical_points[idx_best_crits]:
     paths_best_crits.append(path)
 
 print(time.time() - t)
+
+
+
+plt.figure(figsize=(8,7))
+ctf = plt.contourf(meshgrid[0], meshgrid[1], density_matr, 20, cmap=cm.cividis)
+'''critsc = plt.scatter(critical_points[:,0], critical_points[:,1], s=80, c=max_eigval_H,
+            cmap = cm.RdBu.reversed(), edgecolor='k', vmin = -(np.max(np.abs(max_eigval_H))),
+                     vmax=np.max(np.abs(max_eigval_H)))
+cb = plt.colorbar(label='Maximum eigenvalue of Hessian')'''
+plt.gca().invert_yaxis()
+for path in paths_best_crits:
+    plt.scatter(path[:,0], path[:,1], s=10, c='w', alpha=.95)
+
+
+
 
 
 
