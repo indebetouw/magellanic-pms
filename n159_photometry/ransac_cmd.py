@@ -15,7 +15,7 @@ savephotdir = '/Users/toneill/N159/photometry/reduced/'
 #s_vi = pd.read_csv(savephotdir+'n159-s_reduce.phot.cutblue.csv')
 #all_vi = pd.read_csv(savephotdir+'n159-all_reduce.phot.cutblue.csv')
 
-from load_data import load_phot
+from n159_photometry.load_data import load_phot
 
 fuse = 'vis.ir'
 all_vi = load_phot(region='n159-all',fuse=fuse)
@@ -72,15 +72,16 @@ xycut_dict = {'n159e':bounds, 'n159w':bounds, 'n159s': bounds, 'all':bounds}
 
 def ransac_nointercept(X, y):
     ransac = linear_model.RANSACRegressor(max_trials=1000,
-                                          base_estimator=linear_model.LinearRegression(fit_intercept=False))
+                                          estimator=linear_model.LinearRegression(fit_intercept=False))
     ransac.fit(X, y)
     inlier_mask = ransac.inlier_mask_
-    m, c = float(ransac.estimator_.coef_), float(ransac.estimator_.intercept_)
+    m, c = float(ransac.estimator_.coef_[0]), float(ransac.estimator_.intercept_)
 
-    return [m, c, inlier_mask * 1]
+    return [m, c],[ inlier_mask * 1]
 
 cmap_use = cmr.get_sub_cmap('inferno', 0, 0.9)
 
+nrun = 1000
 
 fig, [[ax1,ax2],[ax3,ax4]] = plt.subplots(2,2,figsize=(9,9),sharey=True,sharex=True)
 axs = [ax2,ax1,ax3,ax4]
@@ -90,8 +91,8 @@ for i in range(4):
     region = list(region_dicts.keys())[i]
     #region = 'n159e'
     r_df = region_dicts[region]
-    xs = r_df['125min160']
-    ys = r_df['mag_160']
+    xs = r_df['555min814']
+    ys = r_df['mag_555']
 
     xy_bounds = xyb_dict[region]
     d_rcline = (xs - xy_bounds[0]) * (xy_bounds[3]-xy_bounds[2]) - (ys-xy_bounds[2])*(xy_bounds[1]-xy_bounds[0])
@@ -104,11 +105,12 @@ for i in range(4):
     X0 = rc_df['555min814'].values.reshape(-1, 1) - exp_555min814
     y0 = rc_df['mag_555'].values - exp_555
 
-    nrun = 2000
-    ran_mc = np.vstack([ransac_nointercept(X0, y0) for i in range(nrun)])
-    ran_m = ran_mc[:, 0]
-    ran_c = ran_mc[:, 1]
-    ran_in = ran_mc[:, 2]
+    ran_mc = [ransac_nointercept(X0, y0) for i in range(nrun)]
+    ran_mc_params =np.array( [ran_mc[i][0] for i in range(nrun)])
+    ran_mc_inlist = np.array([ran_mc[i][1] for i in range(nrun)])
+    ran_m = ran_mc_params[:, 0]
+    ran_c = ran_mc_params[:, 1]
+    ran_in = ran_mc_inlist
     P_in = np.sum(ran_in, axis=0) / nrun
     saveslopes.append(ran_m)
 
@@ -484,7 +486,7 @@ from scipy import stats
 list(region_dicts.keys())
 
 ## east vs west – east has significantly greater slopes than west
-stats.ks_2samp(saveslopes[0],saveslopes[1]alternative='less')
+stats.ks_2samp(saveslopes[0],saveslopes[1],alternative='less')
 
 ## east vs south – east has significantly greater slopes than west
 stats.ks_2samp(saveslopes[0],saveslopes[2],alternative='less')

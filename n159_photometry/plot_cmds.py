@@ -7,9 +7,12 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from sklearn import linear_model
 import seaborn as sns
-from load_data import load_phot
+from n159_photometry.load_data import load_phot
 import statsmodels.api as sm
 import os
+import matplotlib
+matplotlib.rcParams['font.sans-serif'] = "Avenir"
+matplotlib.rcParams['font.family'] = "sans-serif"
 
 poss_mags = ['mag_555','mag_814','mag_125','mag_160']
 poss_cols = ['555min814','125min160']
@@ -50,7 +53,7 @@ print(f'all n159: {len(all_vi)}')
 print(f'n159off: {len(off_vi)}')
 
 #############
-cm_use = cmr.get_sub_cmap(cmr.toxic,0,1)
+cm_use = cmr.get_sub_cmap(cmr.freeze,0,1)
 import matplotlib as mpl
 
 
@@ -84,7 +87,7 @@ xlim_dict = {poss_cols[0]:[-1,4],poss_cols[1]:[-1,2]}
 ylim_dict = {poss_mags[0]:[28,17],poss_mags[1]:[28,17],poss_mags[2]:[26,12],poss_mags[3]:[26,12]}
 nhbox = {poss_cols[0]:80,poss_cols[1]:100}
 
-cm_use = cmr.get_sub_cmap(cmr.toxic,0,1)
+cm_use = cmr.get_sub_cmap(cmr.freeze,0,1)
 
 
 def plot4pan(col_use=poss_cols[0],axs=axs):
@@ -135,12 +138,56 @@ ax.legend(loc='upper right',title=f'{region.upper()}',fontsize=9)
 plt.savefig(f'{sdir}bulkcmd_{region}.png',dpi=300)
 
 
+poss_regions = ['n159e','n159w','n159s','off']
+plotdir= '/Users/toneill/N159/plots/final_plots/'
 
-#7FB069
+fig, axs = plt.subplots(2,4,figsize=(12,8))
+axs = axs.ravel()
+
+col_use = '555min814'
+mag_use = 'mag_555'
+i = 0
+for r in poss_regions:
+    r_df = vis_dict[r]
+    axs[i].scatter(r_df[col_use],r_df[mag_use],s=0.5,alpha=0.5,c='gray')
+    axs[i].set_title(r.upper(),fontsize=20)
+    axs[i].invert_yaxis()
+    axs[i].set_xlabel('F555W - F814W [mag]',fontsize=12)
+    axs[i].set_xlim(-1,5)
+    axs[i].set_ylim(27.5,18)
+    i += 1
+axs[0].set_ylabel('F555W [mag]',fontsize=16)
+
+col_use = '125min160'
+mag_use = 'mag_125'
+for r in poss_regions:
+    r_df = ir_dict[r]
+    axs[i].scatter(r_df[col_use],r_df[mag_use],s=0.5,alpha=0.5,c='gray')
+    axs[i].invert_yaxis()
+    axs[i].set_xlabel('F125W - F160W [mag]',fontsize=12)
+    axs[i].set_xlim(-1,5)
+    axs[i].set_ylim(26.5,12)
+    i += 1
+axs[4].set_ylabel('F125W [mag]',fontsize=16)
+
+for ax in axs:
+    ax.xaxis.set_ticks_position('both')
+    ax.yaxis.set_ticks_position('both')
+    ax.tick_params(direction='in', which='both')#, labelsize=15)
+    ax.minorticks_on()
+
+fig.tight_layout()
+fig.subplots_adjust(wspace=0.2)
+
+xline = 0.7575
+axs[0].plot([xline,xline], [0, 1], color='grey', lw=1,zorder=50,
+         transform=fig.transFigure, clip_on=False)
 
 
+plt.savefig(f'{plotdir}all_cmds.png',dpi=300)
+plt.savefig(f'{plotdir}all_cmds.pdf',dpi=300)
 
-
+#### N159E
 
 
 

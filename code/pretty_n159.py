@@ -7,11 +7,10 @@ from reproject import reproject_interp
 #from hcongrid import hcongrid
 #import img_scale
 import copy
-import aplpy
 import numpy as np
 from astropy.io import fits
 from astropy import units as u
-import aplpy
+#import aplpy
 
 import pandas as pd
 savephotdir = '/Users/toneill/N159/photometry/reduced/'
@@ -92,7 +91,20 @@ photdir = '/Users/toneill/N159/photometry/'
 #refdir = photdir + 'ref_files_WCS/'
 refdir = '/Users/toneill/N159/hst_mosaics/'
 
-#n_8 = fits.open(refdir+'f814_n159.fits')
+
+
+n_8 = fits.open(refdir+'f814_n159.fits')
+
+img = np.sqrt(n_8[0].data)
+
+fig = plt.figure(figsize=(10,10))
+ax1 = fig.add_subplot(1,1,1,projection=WCS(n_8[0].header))
+ax1.imshow(img,origin='lower',cmap='Greys_r',vmax=np.nanquantile(img,0.99))
+ax1.set_xlabel('RA')
+ax1.set_ylabel('Dec')
+fig.tight_layout()
+plt.savefig('/Users/toneill/N159/plots/n159_mosaic.pdf',dpi=300)
+
 
 ne_8 = fits.open(refdir + 'f814_n159e.fits')
 nw_8 = fits.open(refdir + 'f814_n159w.fits')

@@ -17,9 +17,11 @@ if __name__ == '__main__':
         wdf = pd.read_csv(savephotdir2+'n159-w/'+f'n159-w_phot_{fuse}.csv')
         sdf = pd.read_csv(savephotdir2+'n159-s/'+f'n159-s_phot_{fuse}.csv')
         alldf =pd.read_csv(savephotdir2+'n159-all/'+f'n159-all_phot_{fuse}.csv')
+        offdf = pd.read_csv(savephotdir2+'off-point/'+f'off-point_phot_{fuse}.csv')
 
         print(f'\n {fuse}')
         print(f'E: {len(edf)}')
         print(f'W: {len(wdf)}')
         print(f'S: {len(sdf)}')
         print(f'All: {len(alldf)}')#'''
+        print(f'Off: {len(offdf)}')  # '''
